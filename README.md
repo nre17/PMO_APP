@@ -1,6 +1,10 @@
-# Phase Two Delivery Hub
+# Phase Two · Delivery Desk
 
 A local demonstrator for a small AI and data delivery team: one backlog, clear handoffs, connected blockers and decisions, and a Thursday briefing built from the same records.
+
+The Delivery Desk redesign adds a visual pipeline with exact stage drill-downs, an intervention queue, separate register follow-ups, workstream and milestone context, readable delivery lists, distinct software/general boards, and one item drawer for checks and handovers. Weekly reporting follows confirmation → draft review → approval and presentation. The app refreshes on window focus and once per minute while visible; a failed refresh keeps the last records with a visible warning.
+
+Explore [the interactive wireframe study](http://127.0.0.1:4310/design-study.html) while the local server is running. Its standalone source is [public/design-study.html](public/design-study.html). The four wireframes include phone and grayscale modes; they use illustrative fictional content. [DESIGN.md](DESIGN.md) records the visual system and chosen direction. [Contribution guidance](docs/CONTRIBUTING.md) and the [review checklist](docs/REVIEW-CHECKLIST.md) explain the GitHub workflow.
 
 The fictional Northstar project contains 10 people, three workstreams, and 30 work items. It starts in **demo mode** with role switching, local persistence, and synthetic evidence links. It does not implement corporate sign-in and must not be used for real client information or exposed as a shared service.
 

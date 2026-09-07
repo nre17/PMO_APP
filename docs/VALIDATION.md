@@ -1,5 +1,7 @@
 # Demonstrator validation
 
+This records the original functional baseline. See [Delivery Desk redesign review](design/VALIDATION.md) for the current 36-test result and redesigned browser walkthroughs.
+
 Validated locally on Windows with Node.js 24 on 7 September 2026.
 
 ## Automated checks

@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowUpRight, Check, CircleHelp, ClipboardList, GitBranch, Plus, Search, ShieldAlert } from 'lucide-react';
 import type { PageProps, Register, RegisterType } from '../shared/types';
 import { Avatar, Badge, Field, Modal, canEdit, formatDate } from './ui';
+import { recordAttention } from '../shared/reporting';
 
 const registerLabels: Record<RegisterType, string> = { risk: 'Risk', assumption: 'Assumption', issue: 'Issue', dependency: 'Dependency', decision: 'Decision' };
+const registerPluralLabels: Record<RegisterType, string> = { risk: 'Risks', assumption: 'Assumptions', issue: 'Issues', dependency: 'Dependencies', decision: 'Decisions' };
 const registerIcons = { risk: ShieldAlert, assumption: CircleHelp, issue: AlertTriangle, dependency: GitBranch, decision: Check };
 type RegisterDraft = Omit<Register, 'id' | 'version' | 'updatedAt'>;
 
@@ -66,25 +68,19 @@ export function Registers({ state, user, mutate, notify, openItem }: PageProps) 
     } finally { setSaving(false); }
   }
   const member = (id: string) => state.members.find(person => person.id === id);
-  return <div className="stack">
+  return <div className="stack registers-workspace">
     <div className="page-header">
-      <div><div className="eyebrow">RISKS, ISSUES & DECISIONS</div><h1 className="page-title">Registers</h1><p className="page-subtitle">Make the uncertainty visible. Give the next move an owner.</p></div>
+      <div><h1 className="page-title">Risks & decisions</h1><p className="page-subtitle">Track the concerns, dependencies, and decisions that affect delivery.</p></div>
       {canCreate && <button className="button primary" onClick={() => openEditor()}><Plus size={17} /> Add entry</button>}
     </div>
 
-    <div className="register-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-      {[
-        { label: 'Active entries', value: scoped.filter(entry => entry.status !== 'resolved').length, note: 'Open, monitoring or escalated', tone: 'neutral' },
-        { label: 'Escalated', value: scoped.filter(entry => entry.status === 'escalated').length, note: 'Need focused intervention', tone: 'red' },
-        { label: 'Decisions to close', value: scoped.filter(entry => entry.type === 'decision' && entry.status !== 'resolved').length, note: 'Keep delivery moving', tone: 'amber' },
-      ].map(metric => <div className="panel" key={metric.label}><div className="panel-body"><span className="muted">{metric.label}</span><div style={{ fontSize: 30, fontWeight: 650, margin: '7px 0' }}>{metric.value}</div><span className="muted" style={{ fontSize: 12 }}>{metric.note}</span></div></div>)}
-    </div>
+    <div className="register-summary" aria-label="Register position for selected workstreams"><span><strong>{scoped.filter(entry => entry.status !== 'resolved').length}</strong>active entries</span><span><strong>{scoped.filter(entry => entry.status === 'escalated').length}</strong>escalated</span><span><strong>{scoped.filter(entry => recordAttention(entry, state.settings).overdue).length}</strong>overdue follow-ups</span><span><strong>{scoped.filter(entry => entry.type === 'decision' && entry.status !== 'resolved').length}</strong>decisions outstanding</span></div>
 
     <section className="panel">
       <div className="panel-header" style={{ display: 'block' }}>
         <div className="tabs" role="tablist" aria-label="Register type">
           {(['all', 'risk', 'issue', 'dependency', 'decision', 'assumption'] as const).map(type => <button key={type} className={`tab ${activeType === type ? 'active' : ''}`} role="tab" aria-selected={activeType === type} onClick={() => setActiveType(type)}>
-            {type === 'all' ? 'All entries' : `${registerLabels[type]}s`} <span className="muted">{scoped.filter(entry => type === 'all' || entry.type === type).length}</span>
+            {type === 'all' ? 'All entries' : registerPluralLabels[type]} <span className="muted">{scoped.filter(entry => type === 'all' || entry.type === type).length}</span>
           </button>)}
         </div>
         <div className="toolbar" style={{ marginTop: 18 }}>
@@ -94,30 +90,31 @@ export function Registers({ state, user, mutate, notify, openItem }: PageProps) 
         </div>
       </div>
       {filtered.length ? <div style={{ overflowX: 'auto' }}><table className="data-table register-table">
-        <thead><tr><th>Entry / impact</th><th>Workstream</th><th>Owner / next action</th><th>Due</th><th>Priority</th><th>Status</th></tr></thead>
+        <thead><tr><th>Concern & impact</th><th>Workstream</th><th>Owner & next action</th><th>Follow-up date</th><th>Priority</th><th>Status</th></tr></thead>
         <tbody>{filtered.map(register => {
           const Icon = registerIcons[register.type];
           const owner = member(register.ownerId);
+          const attention = recordAttention(register, state.settings);
           return <tr key={register.id}>
-            <td style={{ minWidth: 265, maxWidth: 370 }}><div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><Icon size={17} style={{ flexShrink: 0, marginTop: 3, color: register.status === 'escalated' ? '#bb4938' : 'var(--muted)' }} /><div>
+            <td style={{ minWidth: 265, maxWidth: 370 }}><div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}><Icon size={17} style={{ flexShrink: 0, marginTop: 3, color: register.status === 'escalated' ? 'var(--red)' : 'var(--muted)' }} /><div>
               <button className="text-button" onClick={() => openEditor(register)} style={{ textAlign: 'left', fontWeight: 600 }}>{register.title}</button>
-              <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>{registerLabels[register.type]}{register.impact ? ` · ${register.impact}` : ''}</div>
-              {register.relatedItemIds.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>{register.relatedItemIds.map(id => {
+              <div className="register-row-context">{registerLabels[register.type]}{register.impact ? ` · ${register.impact}` : ''}</div>
+              {register.relatedItemIds.length > 0 && <div className="register-row-links">{register.relatedItemIds.map(id => {
                 const item = state.items.find(value => value.id === id);
-                return item ? <button className="button ghost small" key={id} onClick={() => openItem(id)} title={item.title}><ArrowUpRight size={12} /> {item.title.length > 36 ? `${item.title.slice(0, 36)}…` : item.title}</button> : null;
+                return item ? <button className="text-button" key={id} onClick={() => openItem(id)}><ArrowUpRight size={14} />{item.title}</button> : null;
               })}</div>}
             </div></div></td>
-            <td><span className="tag">{state.workstreams.find(workstream => workstream.id === register.workstreamId)?.shortName || 'Unassigned'}</span></td>
-            <td style={{ minWidth: 200, maxWidth: 280 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{owner && <Avatar member={owner} size={26} />}<span>{owner?.name || 'Unassigned'}</span></div><div className="muted" style={{ fontSize: 12, marginTop: 7 }}>{register.nextAction || 'Next action not recorded'}</div></td>
-            <td style={{ whiteSpace: 'nowrap' }}>{register.dueDate ? formatDate(register.dueDate) : '—'}</td>
-            <td><Badge tone={register.priority === 'Critical' ? 'red' : register.priority === 'High' ? 'amber' : 'neutral'}>{register.priority}</Badge></td>
-            <td><Badge tone={register.status === 'escalated' ? 'red' : register.status === 'resolved' ? 'green' : register.status === 'monitoring' ? 'amber' : 'neutral'}>{register.status.charAt(0).toUpperCase() + register.status.slice(1)}</Badge></td>
+            <td data-label="Workstream">{state.workstreams.find(workstream => workstream.id === register.workstreamId)?.shortName || 'Unassigned'}</td>
+            <td data-label="Owner & next action" style={{ minWidth: 200, maxWidth: 280 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{owner && <Avatar member={owner} size={26} />}<span>{owner?.name || 'Unassigned'}</span></div><div className="register-row-context">{register.nextAction || 'Next action not recorded'}</div></td>
+            <td data-label="Follow-up date" className={`register-due ${attention.overdue ? 'attention' : ''}`}>{register.dueDate ? formatDate(register.dueDate) : 'No date'}{attention.overdue ? <small>Overdue</small> : attention.dueToday ? <small>Due today</small> : attention.dueReminder ? <small>Due next working day</small> : null}</td>
+            <td data-label="Priority"><Badge tone={register.priority === 'Critical' ? 'red' : register.priority === 'High' ? 'amber' : 'neutral'}>{register.priority}</Badge></td>
+            <td data-label="Status"><Badge tone={register.status === 'escalated' ? 'red' : register.status === 'resolved' ? 'green' : register.status === 'monitoring' ? 'amber' : 'neutral'}>{register.status.charAt(0).toUpperCase() + register.status.slice(1)}</Badge></td>
           </tr>;
         })}</tbody>
       </table></div> : <div className="empty-state"><ClipboardList size={32} /><h3>No entries match this view</h3><p>Adjust your filters or add a register entry to make the next action clear.</p>{canCreate && <button className="button secondary" onClick={() => openEditor()}>Add entry</button>}</div>}
     </section>
 
-    {editing && <Modal title={editing === 'new' ? 'Add register entry' : canUpdate ? 'Review register entry' : 'Register entry'} description="Connect the concern, the accountable owner and the next action." onClose={() => !saving && setEditing(null)} wide>
+    {editing && <Modal title={editing === 'new' ? 'Add register entry' : draft.title} description={canUpdate ? 'Record the impact, owner, and next action.' : 'You can view this entry. Its owner, workstream lead, or PMO can update it.'} onClose={() => !saving && setEditing(null)} variant="drawer" className="register-workspace" wide>
       <form onSubmit={save} className="stack">
         {error && <div className="notice notice-warning" role="alert">{error}</div>}
         <fieldset disabled={!canUpdate || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
@@ -141,7 +138,7 @@ export function Registers({ state, user, mutate, notify, openItem }: PageProps) 
           </div>
           <div className="notice" style={{ marginTop: 20 }}>
             <label className="checkbox-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={draft.clientVisible} onChange={event => update('clientVisible', event.target.checked)} />Allow a client-safe summary in report drafts</label>
-            {draft.clientVisible && <div style={{ marginTop: 12 }}><Field label="Client-safe summary"><textarea className="textarea" rows={2} required value={draft.clientSummary} onChange={event => update('clientSummary', event.target.value)} placeholder="Only approved-for-client wording. Internal detail stays internal." /></Field><p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>This supplies draft content. A report still needs review and approval.</p></div>}
+            {draft.clientVisible && <div style={{ marginTop: 12 }}><Field label="Client-safe summary"><textarea className="textarea" rows={2} required value={draft.clientSummary} onChange={event => update('clientSummary', event.target.value)} placeholder="Only approved-for-client wording. Internal detail stays internal." /></Field><p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>This supplies draft content. A report still needs review and approval.</p></div>}
           </div>
         </fieldset>
         <div className="form-actions"><button type="button" className="button secondary" onClick={() => setEditing(null)} disabled={saving}>{canUpdate ? 'Cancel' : 'Close'}</button>{canUpdate && <button className="button primary" type="submit" disabled={saving}>{saving ? 'Saving…' : editing === 'new' ? 'Add entry' : 'Save changes'}</button>}</div>

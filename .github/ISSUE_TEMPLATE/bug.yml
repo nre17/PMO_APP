@@ -1,0 +1,41 @@
+name: Bug report
+description: Report incorrect behaviour in the delivery hub.
+title: '[Bug] '
+body:
+  - type: markdown
+    attributes:
+      value: Use fictional demo data in examples. Include enough detail to reproduce the problem without client information or credentials.
+  - type: input
+    id: area
+    attributes:
+      label: Affected page or workflow
+      placeholder: Delivery — record a UAT result
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the fictional persona, starting stage, and actions taken.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour and impact
+      description: Include a screenshot or error text when useful. Explain whether work is blocked or data appears incorrect.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Windows, Edge, desktop; branch or commit; local demo
+    validations:
+      required: true

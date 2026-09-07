@@ -1,0 +1,30 @@
+name: Feature or improvement
+description: Propose a change that makes project delivery easier.
+title: '[Feature] '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Who needs this, and what is difficult today?
+      placeholder: As a workstream lead, I need to find unconfirmed changes before the Thursday cutoff.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the improvement from the user's perspective. A proposed solution is optional.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance examples
+      description: Give concrete scenarios that would demonstrate success, including relevant roles or workflow stages.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Constraints and references
+      description: Optional examples, alternatives, accessibility needs, or dependencies. Use synthetic data.
