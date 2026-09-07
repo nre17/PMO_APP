@@ -12,7 +12,7 @@ Redesign the existing local PMO demonstrator for a small internal data/AI delive
 2. **Complete — synthesis and wireframes.** Resolve conflicting guidance, select a visual direction, define tokens and interaction contracts, and produce responsive wireframes grounded in the actual seeded project.
 3. **Complete — implementation.** Redesign shared components and the five views, preserving backend behavior and explicit authorization.
 4. **Complete — independent review.** Inspect real browser workflows, desktop/panel/mobile layouts, keyboard access, and the approved report route; correct observed defects.
-5. **In progress — GitHub handoff.** Verify the intended repository visibility, publish a baseline and reviewable design change, and record tests and remaining limitations.
+5. **Complete — GitHub handoff.** Verify the intended repository visibility, publish a baseline and reviewable design change, and record tests and remaining limitations.
 
 ## Evidence and success criteria
 
@@ -21,3 +21,7 @@ Primary source classes: original Anthropic design research, product/design-syste
 An unfamiliar team member should identify the urgent issue and its next action, capture work without a long form, understand release prerequisites, and prepare a client brief without guessing. Small text, hover-only essentials, contradictory workflow ordering, decorative data, and inaccessible controls fail review. Visual assessment considers identity, hierarchy, typography, density, consistency, and interaction quality separately.
 
 The planning tool is unavailable in this session; this document records the live plan instead. Research workers own distinct source lanes and report provenance to the coordinating agent. Implementation and final critique have separate ownership.
+
+## Handoff
+
+The private repository preserves the original demonstrator on main. The redesign is in [PR #1](https://github.com/nre17/PMO_APP/pull/1), with automated Linux and Windows checks. Local validation is recorded in [the redesign review](design/VALIDATION.md). Remaining rollout work is tracked in [the team pilot](https://github.com/nre17/PMO_APP/issues/2) and [hosting and corporate identity](https://github.com/nre17/PMO_APP/issues/3). These follow-ups are open; no live deployment or team pilot is claimed.
