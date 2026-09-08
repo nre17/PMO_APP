@@ -18,6 +18,10 @@ Dependency maintenance was followed by a successful build, zero known production
 
 ## Current browser observations
 
+The populated consulting showcase adds four integration tests. The full local suite passed **83 of 83** after its integration. The new coverage exercises discovery review, gated UAT/release and rejection into a new cycle, explicit client acceptance, meeting capture, use-case confirmations, report approval and immutable labelled presentation, and storage/profile separation. The dedicated launcher was checked to retain its local-store and empty external-database overrides after environment loading. The final ready-to-present fixture edition is also included in the showcase tests.
+
+Showcase browser checks opened a discovery record from the guide and its real handover form, reviewed accepted artifacts, opened an illustrative evidence pack on the same origin, switched into the approver's report view, and inspected the report history. The demonstration remains populated for rehearsal; these read-only browser checks do not claim that the full workflow was submitted through the UI. Those state-changing paths were exercised by API integration tests.
+
 The reviewed-intake workspace was checked after a server restart: overlapping portfolio groups, original tracker statuses beside intake stages, linked status-confirmation actions, completed and deferred source filters, and source-file/row references. Counts persisted and a repeat intake preview produced no changes. The final browser error log was empty. Local documents and project records are excluded from this repository; these observations do not establish a live connection to the source systems.
 
 These interactions were checked in an isolated local portfolio QA store on 8 September:

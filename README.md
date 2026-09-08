@@ -47,6 +47,7 @@ Stop a server with Ctrl+C. Build before serving compiled assets; restart a compi
 | `SEED_PROFILE=portfolio` | Default. Seeds ten names into a new `.data/portfolio` store. |
 | `SEED_PROFILE=demo` | Opens the original `.data/pmo` synthetic Northstar scenario. |
 | `SEED_PROFILE=project` | Opens the isolated `.data/client` project store. Reviewed local intake supplies its records. |
+| `SEED_PROFILE=showcase` | Opens `.data/showcase`, a populated illustrative consulting-lifecycle demonstration. |
 | `DATA_DIR` | Optional local storage path; overrides the profile's default path. |
 | `DATABASE_URL` | Optional PostgreSQL connection; the profile only seeds an empty database. |
 | `APP_MODE=demo` | Required local preview mode; non-demo startup is blocked. |
@@ -58,6 +59,12 @@ Stop a server with Ctrl+C. Build before serving compiled assets; restart a compi
 PGlite supplies local PostgreSQL storage. Restarts preserve edits and dates. Ownership locks prevent concurrent local servers opening the same store; a stale lock is reclaimed only after confirming its process exited.
 
 `pnpm demo:reset` archives the selected local store to a timestamped sibling backup. Stop its server and check `SEED_PROFILE` and `DATA_DIR` first. It refuses external PostgreSQL and paths outside the workspace. See [the walkthrough](docs/DEMO.md) for synthetic workflow examples.
+
+## Present the full demonstration
+
+Run `pnpm showcase` to open a populated, explicitly labelled demonstration on `http://127.0.0.1:4311`. It can run alongside the sourced project on port 4310. The launcher selects `.data/showcase` and overrides any external database setting for that process. `pnpm showcase --production` serves compiled assets after `pnpm build`.
+
+The ten use cases include illustrative discovery, architecture, engineering, evaluation, UAT, release and adoption work; connected milestones and RAID records; meetings; confirmations; and report editions. The **Demo guide** walks through the real controls. Synthetic roles, tests and approvals demonstrate behaviour without representing project commitments. Approved presentation views retain the demonstration label. Ordinary restart preserves the rehearsal; the [showcase walkthrough](docs/SHOWCASE.md) includes a safe reset and a suggested presentation sequence.
 
 ## Reviewed project intake
 

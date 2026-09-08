@@ -7,7 +7,7 @@ export const PORTFOLIO_USE_CASES = [
   ['uc-investment-companion', 'Investment Companion', 'Investment Companion'],
   ['uc-legal-companion', 'Legal Companion', 'Legal Companion'],
   ['uc-market-intelligence', 'Market Intelligence', 'Market Intelligence'],
-  ['uc-accounting-validation', 'Accounting Validation', 'Accounting Validation'],
+  ['uc-accounting-validation', 'Accounting Companion', 'Accounting Companion'],
   ['uc-benchmark', 'Benchmark', 'Benchmark'],
   ['uc-treasury-liquidity', 'AI Based Treasury Liquidity Management', 'Treasury Liquidity'],
   ['uc-spreadsheet-intelligence', 'Spreadsheet Intelligence', 'Spreadsheet Intelligence'],

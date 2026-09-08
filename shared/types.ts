@@ -9,7 +9,7 @@ export const GENERAL_STAGES = ['Backlog', 'In progress', 'Review', 'Closed'] as 
 export type Stage = typeof SOFTWARE_STAGES[number] | typeof GENERAL_STAGES[number];
 export interface Versioned { id: string; version: number; updatedAt: string }
 export interface Member { id: string; name: string; initials: string; role: Role; title: string; color: string; workstreamIds: string[]; canApproveReports: boolean }
-export interface Settings { version?: number; projectName: string; phaseName: string; timezone: string; submissionHour: number; cutoffHour: number; blockedEscalationDays: number; workingDays: number[] }
+export interface Settings { version?: number; projectName: string; phaseName: string; timezone: string; submissionHour: number; cutoffHour: number; blockedEscalationDays: number; workingDays: number[]; demoScenario?: 'consulting-lifecycle' }
 export interface SourceReference { documentId: string; locator: string; fileHash?: string }
 export interface Workstream extends Versioned { name: string; shortName: string; description: string; leadId: string; health: Health; statusNote: string; clientSummary: string; color: string; lifecyclePhase?: LifecyclePhase; priority?: Priority; scope?: string; nextGate?: string; gateDate?: string; group?: string; groups?: string[]; phaseLabel?: string; sources?: SourceReference[] }
 export interface Deliverable extends Versioned { title: string; workstreamId: string; ownerId: string; description: string; lifecyclePhase?: LifecyclePhase; status?: 'planned' | 'draft' | 'in_review' | 'accepted'; evidenceLinks?: string[] }

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Store } from './db.js';
 import { createSeedState } from './seed.js';
 import { createPortfolioState } from './portfolio-seed.js';
+import { createShowcaseState } from './showcase-seed.js';
 import { seedConfiguration, type SeedProfile } from './seed-config.js';
 import { HttpError, audit, authorize, checkVersion, collection, createRecord, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, sourceVersions, streamConfirmed, textField, touch, transition } from './domain.js';
 import { aiAvailable, draftReport, extractNotes } from './ai.js';
@@ -16,14 +17,14 @@ export async function createApp(options: AppOptions = {}) {
   const now = () => (options.now?.() ?? new Date()).toISOString();
   requireThat((process.env.APP_MODE ?? 'demo') === 'demo', 'Corporate identity is not configured. Non-demo mode is disabled.', 503);
   const configuration = seedConfiguration(options);
-  const initialState = options.state ?? (configuration.seedProfile === 'demo' ? createSeedState(new Date(now())) : createPortfolioState(new Date(now())));
+  const initialState = options.state ?? (configuration.seedProfile === 'showcase' ? createShowcaseState(new Date(now())) : configuration.seedProfile === 'demo' ? createSeedState(new Date(now())) : createPortfolioState(new Date(now())));
   const store = await Store.open({ dataDir: configuration.dataDir, databaseUrl: options.testMode ? options.databaseUrl : options.databaseUrl ?? process.env.DATABASE_URL, initialState });
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 8 * 1024 * 1024 });
   await app.register(cookie);
   const sessions = new Map<string, { userId: string; expires: number }>();
   const previews = new Map<string, { preview: ImportPreview; userId: string; expires: number }>();
   const aiRequests = new Map<string, number[]>();
-  const sessionCookie = 'pmo_demo_session';
+  const sessionCookie = configuration.seedProfile === 'showcase' ? 'pmo_showcase_session' : 'pmo_demo_session';
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
@@ -196,7 +197,7 @@ export async function createApp(options: AppOptions = {}) {
     requireThat(report.status === 'approved', 'Only an approved report has a presentation.', 409);
     // Explicit allowlist: no live source records, audit entries, source versions,
     // user contact details, or internal annotations can enter this view.
-    return { id: report.id, title: report.title, audience: report.audience, periodStart: report.periodStart, periodEnd: report.periodEnd, asOf: report.asOf, approvedAt: report.approvedAt, status: report.status, body: report.body };
+    return { id: report.id, title: report.title, audience: report.audience, periodStart: report.periodStart, periodEnd: report.periodEnd, asOf: report.asOf, approvedAt: report.approvedAt, status: report.status, body: report.body, ...(state.settings.demoScenario === 'consulting-lifecycle' ? { demoScenario: state.settings.demoScenario } : {}) };
   });
   app.patch('/api/settings', request => mutate(request, (state, user, stamp) => {
     pmo(user);

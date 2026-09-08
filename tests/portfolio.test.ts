@@ -13,7 +13,7 @@ import { LIFECYCLE_PHASES, type HubState, type Member } from '../shared/types.js
 
 const fixedNow = new Date('2026-09-08T08:00:00.000Z');
 const firstId = PORTFOLIO_USE_CASES[0][0], secondId = PORTFOLIO_USE_CASES[1][0];
-const expectedNames = ['Performance Portfolio Intelligence', 'Investment Companion', 'Legal Companion', 'Market Intelligence', 'Accounting Validation', 'Benchmark', 'AI Based Treasury Liquidity Management', 'Spreadsheet Intelligence', 'Public Finance', 'Budget Companion'];
+const expectedNames = ['Performance Portfolio Intelligence', 'Investment Companion', 'Legal Companion', 'Market Intelligence', 'Accounting Companion', 'Benchmark', 'AI Based Treasury Liquidity Management', 'Spreadsheet Intelligence', 'Public Finance', 'Budget Companion'];
 
 function roleFixture(): HubState {
   const state = createPortfolioState(fixedNow);

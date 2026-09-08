@@ -13,6 +13,7 @@ import ProjectSettings from './ProjectSettings';
 import Portfolio from './Portfolio';
 import Sources from './Sources';
 import { WorkstreamEditor } from './OverviewExtras';
+import ShowcaseGuide from './ShowcaseGuide';
 
 const navigation = [
   {id:'sources',label:'Project sources',short:'Sources',icon:FileText},
@@ -28,10 +29,40 @@ const navigation = [
 const currentPage = () => navigation.some(n=>n.id===location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
 export default function App() { return location.pathname.startsWith('/brief/') ? <BriefRoute/> : <Workspace/>; }
 
+function useShowcaseEvidence(illustrative: boolean) {
+  useEffect(() => {
+    if (!illustrative) return;
+    const openEvidence = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button > 1) return;
+      const target = event.target;
+      const element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+      const anchor = element?.closest<HTMLAnchorElement>('a[href]');
+      if (!anchor) return;
+      try {
+        const source = new URL(anchor.href, document.baseURI);
+        const prefix = '/synthetic-demo/';
+        if (!['http:', 'https:'].includes(source.protocol) || source.host !== 'example.invalid' || !source.pathname.startsWith(prefix)) return;
+        const evidenceId = decodeURIComponent(source.pathname.slice(prefix.length));
+        if (!evidenceId) return;
+        event.preventDefault();
+        window.open(`/demo-evidence.html#${encodeURIComponent(evidenceId)}`, '_blank', 'noopener,noreferrer');
+      } catch { /* Malformed references retain their normal link behavior. */ }
+    };
+    document.addEventListener('click', openEvidence);
+    document.addEventListener('auxclick', openEvidence);
+    return () => {
+      document.removeEventListener('click', openEvidence);
+      document.removeEventListener('auxclick', openEvidence);
+    };
+  }, [illustrative]);
+}
+
 function BriefRoute() {
   const [report,setReport]=useState<Report>(); const [error,setError]=useState('');
-  useEffect(()=>{api(`/api/reports/${encodeURIComponent(location.pathname.split('/')[2])}/presentation`).then(r=>setReport(r.report||r)).catch(()=>{});},[]);
-  return <div className="presentation-shell"><div className="presentation-toolbar"><a className="button secondary" href="/#reports">Back to workspace</a><button className="button primary" onClick={()=>window.print()}>Print / save PDF</button></div>{error?<div role="alert" className="notice notice-warning">{error}</div>:report?<ReportPresentation report={report}/>:<div className="loading-screen">Opening approved brief…</div>}</div>;
+  const [illustrative,setIllustrative]=useState(false);
+  useShowcaseEvidence(illustrative);
+  useEffect(()=>{let active=true;api(`/api/reports/${encodeURIComponent(location.pathname.split('/')[2])}/presentation`).then(r=>{if(active){setReport(r.report||r);setIllustrative(r.demoScenario==='consulting-lifecycle');}}).catch(e=>{if(active)setError(e.message||'This brief could not be opened. Return to the workspace and try again.');});return()=>{active=false;};},[]);
+  return <div className="presentation-shell"><div className="presentation-toolbar"><a className="button secondary" href="/#reports">Back to workspace</a><button className="button primary" disabled={!report} onClick={()=>window.print()}>Print / save PDF</button></div>{error?<div role="alert" className="notice notice-warning">{error}</div>:report?<>{illustrative&&<div className="showcase-presentation-label" role="note">Demonstration · Illustrative data<span>This report, its approval, and linked evidence packs are synthetic examples.</span></div>}<ReportPresentation report={report}/></>:<div className="loading-screen">Opening approved brief…</div>}</div>;
 }
 
 function Workspace() {
@@ -43,6 +74,7 @@ function Workspace() {
   const [registerSelection,setRegisterSelection]=useState<{id:string;key:number}>();
   const [portfolioSelection,setPortfolioSelection]=useState<{id:string;key:number}>();
   const [editingWorkstream,setEditingWorkstream]=useState<string>();
+  useShowcaseEvidence(boot?.state.settings.demoScenario==='consulting-lifecycle');
   const loadGeneration=useRef(0);
   const load=useCallback(async()=>{const generation=++loadGeneration.current;try{const response=await api<Bootstrap>('/api/bootstrap');if(generation===loadGeneration.current){setBoot(response);setError('');}return response;}catch(error){if(generation===loadGeneration.current)setError((error as Error).message);throw error;}},[]);
   useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible')load().catch(()=>{});};refresh();const change=()=>{setPage(currentPage());window.scrollTo({top:0});};window.addEventListener('hashchange',change);window.addEventListener('focus',refresh);const timer=setInterval(refresh,60000);return()=>{window.removeEventListener('hashchange',change);window.removeEventListener('focus',refresh);clearInterval(timer);};},[load]);
@@ -62,6 +94,7 @@ function Workspace() {
     <a className="skip-link" href="#page-content" onClick={e=>{e.preventDefault();document.getElementById('page-content')?.focus();}}>Skip to content</a>
     <aside className="sidebar"><a className="brand" href="#overview" onClick={()=>navigate('overview')}><span className="brand-mark"><ChevronRight size={26}/></span><span>Phase Two<small>AI programme office</small></span></a><div className="workspace-label"><div><strong>{state.settings.projectName.split(' · ')[0]}</strong><span>{state.settings.phaseName}</span></div></div><nav aria-label="Main navigation"><div className="nav-group"><span className="nav-group-label">Programme</span>{navLinks(['overview','operations','my-actions','delivery'])}</div><div className="nav-group"><span className="nav-group-label">Records</span>{navLinks(['registers','milestones','sources'])}<button className="nav-item" onClick={()=>setMeeting(true)}><Users size={17}/><span>Meetings</span></button></div><div className="nav-group"><span className="nav-group-label">Reporting</span>{navLinks(['reports','approved-briefs'])}</div></nav><div className="sidebar-bottom"><button className="nav-item" onClick={()=>setHelp(true)}><HelpCircle size={17}/>How it works</button><button className="nav-item" onClick={()=>setSettings(true)}><Settings2 size={17}/>Project settings</button><div className="workspace-person"><Avatar member={user} size={32}/><div><strong>{user.name}</strong><span>{user.role==='pmo'?'PMO':user.role.charAt(0).toUpperCase()+user.role.slice(1)} · Local preview</span></div></div></div></aside>
     <div className="main-shell"><header className="topbar"><div className="breadcrumbs"><span>{state.settings.projectName.split(' · ')[0]}</span><span className="breadcrumb-slash">/</span><strong>{navigation.find(n=>n.id===page)?.label}</strong></div><div className="topbar-actions"><button className="global-search" onClick={()=>setSearchOpen(true)} aria-label="Search the hub"><Search size={17}/><span>Search the hub…</span><kbd><Command size={11}/>K</kbd></button><button className="icon-button" aria-label="Refresh project data" onClick={()=>load().then(()=>notify('Project data refreshed')).catch(e=>notify(e.message,true))}><RefreshCw size={17}/></button><button className="icon-button mobile-settings" aria-label="Project settings" onClick={()=>setSettings(true)}><Settings2 size={18}/></button><div className="persona-switch"><Avatar member={user} size={30}/><label><span>Preview as</span><select aria-label="Demo persona" value={user.id} onChange={e=>mutate('/api/demo/persona',{userId:e.target.value}).then(()=>notify('Demo persona changed')).catch(e=>notify(e.message,true))}>{state.members.map(m=><option key={m.id} value={m.id}>{m.name} · {m.role}</option>)}</select></label><ChevronDown size={12}/></div>{canEdit(user)&&!['overview','delivery','milestones'].includes(page)&&<button className="button primary global-create" onClick={()=>setCreate(true)}><Plus size={16}/><span>Add work</span></button>}{page==='overview'&&['pmo','admin'].includes(user.role)&&<button className="button primary global-create" onClick={()=>setEditingWorkstream('new')}><Plus size={16}/><span>Add use case</span></button>}</div></header>
+      {state.settings.demoScenario==='consulting-lifecycle'&&<ShowcaseGuide state={state} onNavigate={navigate} onOpenItem={setSelected} onOpenUseCase={openUseCase} onMeeting={()=>setMeeting(true)}/>}
       <main id="page-content" className="workspace-content" tabIndex={-1}>
         {error&&<div className="notice notice-warning" role="alert">Could not refresh the project. You are viewing the last loaded records. {error}<button className="button secondary small" onClick={()=>load().catch(()=>{})}>Try again</button></div>}
         {page==='overview'&&<Portfolio {...props} initialSelection={portfolioSelection} onWorkstream={setEditingWorkstream} onDelivery={id=>{navigate('delivery');setWorkstream(id);}}/>}
@@ -70,7 +103,7 @@ function Workspace() {
         {page==='my-actions'&&<MyWork {...props} navigate={navigate}/>}
         {(page==='delivery'||page==='milestones')&&<Delivery {...props} initialTab={page==='milestones'?'milestones':'work'} initialFilter={deliveryFilter} initialStage={deliveryStage} initialKind={deliveryKind} search={search} setSearch={setSearch} workstream={workstream} setWorkstream={setWorkstream} createItem={()=>setCreate(true)}/>}
         {page==='registers'&&<Registers {...props} initialSelection={registerSelection}/>}{(page==='reports'||page==='approved-briefs')&&<Reports {...props} onCurrentPeriod={()=>navigate('reports')} initialView={page==='approved-briefs'?'archive':'current'}/>}
-      </main><footer className="workspace-footer"><span>Phase Two · Local preview</span><button className="text-button" onClick={()=>setHelp(true)}>A guide to the workflow<ArrowUpRight size={13}/></button></footer>
+      </main><footer className="workspace-footer"><span>Phase Two · {state.settings.demoScenario==='consulting-lifecycle'?'Illustrative demonstration':'Local preview'}</span><button className="text-button" onClick={()=>setHelp(true)}>A guide to the workflow<ArrowUpRight size={13}/></button></footer>
     </div><nav className="mobile-navigation" aria-label="Mobile navigation">{navLinks(['overview','my-actions','delivery','registers','reports'],true)}</nav>
     {item&&<ItemDetail key={item.id} {...props} item={item} onClose={()=>setSelected(undefined)}/>}{create&&<ItemForm {...props} onClose={()=>setCreate(false)} defaultWorkstream={workstream!=='all'?workstream:undefined}/>}{settings&&<ProjectSettings {...props} onClose={()=>setSettings(false)}/>}{meeting&&<MeetingWorkspace {...props} onClose={()=>setMeeting(false)}/>}{searchOpen&&<WorkSearch {...props} onUseCase={openUseCase} onClose={()=>setSearchOpen(false)}/>}
     {editingWorkstream&&<WorkstreamEditor key={editingWorkstream} {...props} id={editingWorkstream} onClose={()=>setEditingWorkstream(undefined)}/>}

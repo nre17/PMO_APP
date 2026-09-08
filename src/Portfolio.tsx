@@ -65,7 +65,7 @@ export function Portfolio(props: PortfolioProps) {
       <div className="portfolio-hero-copy">
         <span className="portfolio-kicker">{state.settings.phaseName} / Use-case portfolio</span>
         <h1>The AI portfolio<span>.</span></h1>
-        <p>{state.sourceDocuments?.length ? `${summary.currentTrackerRecords} current tracker rows across ${summary.trackerCoveredUseCases} use cases. Keep source context alongside the delivery plan.` : summary.phaseSet === 0 ? 'Start with the brief. Add the confirmed outcome, lead and next gate for each use case.' : 'See where each use case stands, what comes next, and the work behind it.'}</p>
+        <p>{state.settings.demoScenario === 'consulting-lifecycle' ? `${state.items.length} work items connect discovery, design, engineering and adoption. Explore the programme, then follow a delivery journey.` : state.sourceDocuments?.length ? `${summary.currentTrackerRecords} current tracker rows across ${summary.trackerCoveredUseCases} use cases. Keep source context alongside the delivery plan.` : summary.phaseSet === 0 ? 'Start with the brief. Add the confirmed outcome, lead and next gate for each use case.' : 'See where each use case stands, what comes next, and the work behind it.'}</p>
       </div>
       <div className="portfolio-hero-facts"><div className="portfolio-total"><strong>{summary.total.toString().padStart(2, '0')}</strong><span>use cases<br/>in the portfolio</span></div><dl><div><dt>Lifecycle phase set</dt><dd>{summary.phaseSet}<span> / {summary.total}</span></dd></div><div><dt>Next gate recorded</dt><dd>{summary.gatesSet}<span> / {summary.total}</span></dd></div><div><dt>Lifecycle artifacts</dt><dd>{summary.artifacts}</dd></div></dl></div>
     </header>

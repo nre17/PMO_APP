@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Illustrative evidence · Phase Two</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f5f1f8;color:#281139;font-family:Arial,sans-serif;line-height:1.6}a{color:#7600b8}button{font:inherit;cursor:pointer}.bar{background:#21002e;color:#fff;padding:14px 5vw;display:flex;justify-content:space-between;align-items:center}.bar a{color:#ecd3ff;text-decoration:none}.mark{font-size:22px;font-weight:700}.mark b{color:#cf66ff}main{max-width:1080px;margin:40px auto;padding:0 28px 55px}.label{display:inline-block;background:#ebd9f8;color:#670097;padding:5px 10px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}.hero{padding:30px 0 25px;border-bottom:1px solid #d9c9e2}h1{font-size:39px;line-height:1.15;letter-spacing:-1px;margin:16px 0}h2{font-size:20px;margin:0 0 10px}p{margin:9px 0;color:#6e597b}.reference{overflow-wrap:anywhere;font:12px/1.6 monospace}.actions{display:flex;justify-content:space-between;align-items:center;gap:15px;margin:20px 0}.actions button{border:0;background:#8600d6;color:white;padding:9px 16px;border-radius:4px}.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:24px}.sheet{background:white;border:1px solid #dfd2e7;border-radius:6px;padding:26px}.sheet>small{color:#8a619d;text-transform:uppercase;letter-spacing:.08em}.sheet ol{padding-left:20px;color:#665271}.sheet li{padding:7px 0}.path{display:flex;gap:9px;margin:22px 0}.path>div{flex:1;background:#f1e7f9;border-top:3px solid #9f2adb;padding:11px;font-size:13px}.path b{display:block;color:#7e339e;font-size:11px;margin-bottom:5px}dl{margin:20px 0 0}dl>div{border-top:1px solid #e9e0ee;padding:12px 0}dt{font-size:12px;color:#7e658f}dd{margin:3px 0;font-weight:600}.note{margin-top:24px;padding:17px 22px;border-left:3px solid #b979d4;background:#eee4f5}.note p{margin:0;font-size:13px}footer{margin-top:30px;color:#7a6886;font-size:12px}@media(max-width:750px){.grid{grid-template-columns:1fr}h1{font-size:30px}.path{flex-wrap:wrap}}@media print{body{background:white}.bar,.actions{display:none}main{margin:0;max-width:none}.sheet{break-inside:avoid}.label{border:1px solid #8600d6}h1{font-size:28px}a{color:inherit}}
+  </style>
+</head>
+<body>
+  <div class="bar"><span class="mark"><b>›</b> Phase Two</span><a href="/#overview">Return to the demonstration →</a></div>
+  <main>
+    <div class="hero"><span class="label">Demonstration · Illustrative evidence</span><h1 id="title">A reviewable evidence record</h1><p>This sample shows the supporting record a team could attach to a handover or acceptance. It is a reusable demonstration template, not a live test result.</p><div class="reference" id="reference"></div></div>
+    <div class="actions"><span>Example pack / <strong id="kind">Review and verification</strong></span><button type="button" onclick="window.print()">Print this example</button></div>
+    <div class="grid">
+      <section class="sheet"><small>01 / The check</small><h2>Evidence that answers a question</h2><p id="purpose">Confirm that the stated acceptance criteria can be reviewed against an identified input and an observable result.</p><div class="path"><div><b>INPUT</b>Named sample</div><div><b>CHECK</b>Observed behaviour</div><div><b>RECORD</b>Reviewer decision</div></div><ol><li>Identify the work item, delivery cycle and environment.</li><li>Describe the input, steps and expected result.</li><li>Record what happened, including exceptions.</li><li>Name the reviewer and retain the supporting reference.</li></ol></section>
+      <section class="sheet"><small>02 / Example record</small><h2>A clear handover</h2><dl><div><dt>Input</dt><dd>Illustrative sample set · DEMO-001</dd></div><div><dt>Reviewer</dt><dd>Demo QA / Demo lead</dd></div><div><dt>Example outcome</dt><dd>Criteria demonstrated in this fictional scenario</dd></div><div><dt>Follow-up</dt><dd>Record the actual decision in the hub workflow</dd></div><div><dt>Authority</dt><dd>Rehearsal only · No client approval</dd></div></dl></section>
+    </div>
+    <div class="note"><p><strong>The workflow retains the decision.</strong> Opening this example does not pass a check, release software, accept a deliverable or close a work item. Use the hub’s test, review and client-response controls to practise those steps.</p></div>
+    <footer>Phase Two demonstration pack · Generated example · Contains no client documents, live system evidence or personal data.</footer>
+  </main>
+  <script>
+    let reference='';try{reference=decodeURIComponent(location.hash.slice(1));}catch{reference='Unrecognised example reference';}
+    document.getElementById('reference').textContent=reference?'Example reference: '+reference:'General demonstration evidence template';
+    const type=/accepted-artifact/.test(reference)?'Artifact review':/deployment/.test(reference)?'Deployment handover':/client-response/.test(reference)?'Client-response record':/UAT/i.test(reference)?'User acceptance testing':/production/i.test(reference)?'Production verification':'Review and verification';
+    document.getElementById('kind').textContent=type;document.getElementById('title').textContent=type+' · example pack';
+  </script>
+</body>
+</html>

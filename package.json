@@ -8,6 +8,7 @@
     "dev": "tsx server/index.ts",
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts --production",
+    "showcase": "tsx server/showcase.ts",
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit",
     "demo:reset": "tsx server/reset.ts"
