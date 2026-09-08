@@ -106,7 +106,7 @@ export function recordAttention(record: AttentionRecord, settings: AttentionSett
 }
 
 export function latestWorkstreamChange(state: HubState, workstreamId: string): string {
-  return [...state.items.filter(i => i.workstreamId === workstreamId), ...state.registers.filter(r => r.workstreamId === workstreamId), ...state.milestones.filter(m => m.workstreamIds.includes(workstreamId)), ...state.workstreams.filter(w => w.id === workstreamId)]
+  return [...state.items.filter(i => i.workstreamId === workstreamId), ...state.deliverables.filter(d => d.workstreamId === workstreamId), ...state.registers.filter(r => r.workstreamId === workstreamId), ...state.milestones.filter(m => m.workstreamIds.includes(workstreamId)), ...state.workstreams.filter(w => w.id === workstreamId)]
     .map(record => record.updatedAt).sort().at(-1) ?? '';
 }
 

@@ -1,11 +1,11 @@
 # Deployment readiness
 
-This release is a **standalone local demonstrator**. It has application role checks and a demo persona selector, but it does not authenticate corporate identities. `APP_MODE=live` must refuse startup until real identity is implemented. Keep the demo on the local computer with synthetic data.
+This release is a **standalone local preview**. It has application role checks and a local persona selector, but it does not authenticate corporate identities. `APP_MODE=live` refuses startup until real identity is implemented. The confirmed use-case names are not an assertion of ownership, scope, delivery progress, or permission to process client information.
 
 ## Available now
 
 - One Node server serves the API and built browser app.
-- Local embedded PostgreSQL persistence uses PGlite; `DATABASE_URL` selects a standard PostgreSQL database.
+- Local embedded PostgreSQL persistence uses PGlite; `DATABASE_URL` selects a standard PostgreSQL database. The default `SEED_PROFILE=portfolio` uses `.data/portfolio`; `SEED_PROFILE=demo` uses the separate `.data/pmo` fixture store unless `DATA_DIR` is explicitly set.
 - Version checks, transactions, and audit records support the demonstrated delivery workflows.
 - AI is optional and runs through the server. Client drafting receives the selected client-safe report content.
 - A Docker build packages the same server and built browser assets. The image defaults to live mode so running it without an explicit configuration cannot silently expose the unauthenticated demo.
@@ -36,7 +36,9 @@ The image runs as an unprivileged user and includes the TypeScript runtime requi
 
 For an isolated development database, set `DATABASE_URL` to its connection string before starting the server. Use environment variables or a local ignored `.env`; do not commit credentials or bake them into an image. Follow the database provider's approved TLS configuration for the eventual shared environment.
 
-The current store creates version-one control and entity tables and seeds fictional content only when the selected database is empty. Existing data persists across restart. Local demo reset archives the existing store before a fresh seed; it refuses external PostgreSQL and is not a migration procedure. Do not connect this demonstrator to a valuable database.
+The current store creates its control and entity tables and seeds only when the selected database is empty. The portfolio profile starts with the ten confirmed use-case names and generic preview roles; ownership, lifecycle facts, and delivery records remain unassigned. The demo profile supplies the fictional Northstar walkthrough. Neither profile replaces existing data. Existing `DATA_DIR` values in `.env` or the process environment override the profile's default path; check them when changing profiles.
+
+Local reset archives the selected embedded store before a fresh seed; it refuses external PostgreSQL and is not a migration procedure. The earlier `.data/pmo` store is preserved separately from `.data/portfolio`. Do not connect the preview to a valuable database. `DATABASE_URL` selects one external database, so two different seed-profile values do not isolate records when the connection string is the same.
 
 ## Required before real project use
 

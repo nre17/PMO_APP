@@ -8,6 +8,7 @@ import path from 'node:path';
 import { mkdir, open, readFile, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import type { HubState } from '../shared/types.js';
+import { seedConfiguration } from './seed-config.js';
 
 // A versioned document table preserves the domain's typed entity boundaries. All
 // cross-record invariants and audit writes commit in the same database transaction.
@@ -41,7 +42,7 @@ async function claimFile(lockPath: string) {
   finally { await handle.close(); }
   return async () => { const held = await ownerOf(lockPath); if (held?.token === owner.token) await unlink(lockPath); };
 }
-async function acquireLocalOwnership(dataDir: string): Promise<() => Promise<void>> {
+export async function acquireLocalOwnership(dataDir: string): Promise<() => Promise<void>> {
   const lockPath = `${dataDir}.pmo-lock`;
   try { return await claimFile(lockPath); }
   catch (error: any) { if (error.code !== 'EEXIST') throw error; }
@@ -97,7 +98,7 @@ export class Store {
       const pool = new pg.Pool({ connectionString: options.databaseUrl, max: 5 });
       store = new Store(postgresDrizzle(pool) as unknown as Database, () => pool.end());
     } else {
-      const dataDir = path.resolve(options.dataDir ?? '.data/pmo');
+      const dataDir = path.resolve(options.dataDir ?? seedConfiguration().dataDir);
       await mkdir(path.dirname(dataDir), { recursive: true });
       const release = await acquireLocalOwnership(dataDir);
       let client: PGlite;

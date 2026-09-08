@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { GENERAL_STAGES, SOFTWARE_STAGES, type HubState, type Member, type WorkItem, type Versioned, type Report, type ReportBody, type Stage } from '../shared/types.js';
+import { GENERAL_STAGES, LIFECYCLE_PHASES, SOFTWARE_STAGES, type HubState, type Member, type WorkItem, type Versioned, type Report, type ReportBody, type Stage } from '../shared/types.js';
 import { confirmationState, dateInTimezone, latestWorkstreamChange, recordAttention, reportingPeriod, shiftDate } from '../shared/reporting.js';
 
 export class HttpError extends Error { constructor(public statusCode: number, message: string) { super(message); } }
@@ -13,6 +13,9 @@ const health = z.enum(['green', 'amber', 'red', 'unknown']);
 const priority = z.enum(['Low', 'Medium', 'High', 'Critical']);
 const link = z.string().trim().url().max(2000).refine(v => /^https?:\/\//i.test(v), 'Use an HTTP or HTTPS evidence link');
 const links = z.array(link).max(30);
+const optionalPhase = z.enum(LIFECYCLE_PHASES).nullish().transform(value => value ?? undefined);
+const optionalPriority = priority.nullish().transform(value => value ?? undefined);
+const unassignedMember = z.string().trim().max(150);
 export const itemSchema = z.object({
   title, description: textField, workstreamId: title, deliverableId: z.string().optional(),
   kind: z.enum(['software', 'general']), category: z.enum(['feature', 'bug', 'data', 'evaluation', 'action', 'research']),
@@ -20,8 +23,8 @@ export const itemSchema = z.object({
   evidenceLinks: links, blocked: z.boolean(), blockReason: textField, nextAction: textField,
   clientSummary: textField, clientVisible: z.boolean(), tags: z.array(z.string().max(40)).max(20),
 });
-const workstreamSchema = z.object({ name: title, shortName: title, description: textField, leadId: title, health, statusNote: textField, clientSummary: textField, color: z.string().max(40) });
-const deliverableSchema = z.object({ title, workstreamId: title, ownerId: title, description: textField });
+const workstreamSchema = z.object({ name: title, shortName: title, description: textField, leadId: unassignedMember, health, statusNote: textField, clientSummary: textField, color: z.string().max(40), lifecyclePhase: optionalPhase, priority: optionalPriority, scope: textField.optional(), nextGate: textField.optional(), gateDate: day.or(z.literal('')).optional() });
+const deliverableSchema = z.object({ title, workstreamId: title, ownerId: unassignedMember, description: textField, lifecyclePhase: optionalPhase, status: z.enum(['planned', 'draft', 'in_review', 'accepted']).nullish().transform(value => value ?? undefined), evidenceLinks: links.optional() });
 const milestoneSchema = z.object({ title, workstreamIds: z.array(title).min(1), deliverableIds: z.array(title), ownerId: title, baselineDate: day, forecastDate: day, actualDate: day.optional(), status: z.enum(['planned', 'at_risk', 'complete']), notes: textField });
 const registerSchema = z.object({ type: z.enum(['risk', 'assumption', 'issue', 'dependency', 'decision']), title, detail: textField, clientSummary: textField, clientVisible: z.boolean(), workstreamId: title, relatedItemIds: z.array(title).max(50), milestoneIds: z.array(title).max(30), ownerId: title, dueDate: day, priority, probability: z.enum(['Low', 'Medium', 'High']), status: z.enum(['open', 'monitoring', 'escalated', 'resolved']), mitigation: textField, nextAction: textField, impact: textField });
 const meetingSchema = z.object({ title, heldAt: z.string().datetime({ offset: true }), notes: textField, linkedItemIds: z.array(title).max(50), linkedRegisterIds: z.array(title).max(50) });
@@ -37,6 +40,7 @@ export function audit(state: HubState, user: Member, entityType: string, entityI
 }
 export function delivery(user: Member) { requireThat(user.role !== 'executive', 'This view is read-only for executives.', 403); }
 export function pmo(user: Member) { requireThat(['pmo', 'admin'].includes(user.role), 'PMO or administrator access required.', 403); }
+function assignedWorkstream(state: HubState, user: Member, workstreamId: string) { return user.workstreamIds.includes(workstreamId) || user.role === 'lead' && state.workstreams.some(workstream => workstream.id === workstreamId && workstream.leadId === user.id); }
 export function authorize(state: HubState, user: Member, type: Collection, record: any) {
   delivery(user);
   if (['pmo', 'admin'].includes(user.role)) return;
@@ -54,6 +58,11 @@ export function validateReferences(state: HubState, type: Collection, record: an
   if (record.workstreamId) exists('workstreams', record.workstreamId);
   if (record.deliverableId) { exists('deliverables', record.deliverableId); requireThat(state.deliverables.find(d => d.id === record.deliverableId)?.workstreamId === record.workstreamId, 'Deliverable must belong to this workstream.'); }
   for (const [field, target] of [['workstreamIds', 'workstreams'], ['deliverableIds', 'deliverables'], ['relatedItemIds', 'items'], ['linkedItemIds', 'items'], ['milestoneIds', 'milestones'], ['linkedRegisterIds', 'registers']] as const) for (const value of record[field] ?? []) exists(target, value);
+  if (type === 'milestones') for (const deliverableId of record.deliverableIds) requireThat(record.workstreamIds.includes(state.deliverables.find(d => d.id === deliverableId)?.workstreamId), 'Milestone deliverables must belong to one of its use cases.');
+  if (type === 'deliverables') {
+    requireThat(!state.items.some(item => item.deliverableId === record.id && item.workstreamId !== record.workstreamId), 'This artifact has linked work in another use case. Reassign that work before moving the artifact.');
+    requireThat(!state.milestones.some(milestone => milestone.deliverableIds.includes(record.id) && !milestone.workstreamIds.includes(record.workstreamId)), 'This artifact has a milestone outside the selected use case. Update the milestone association before moving the artifact.');
+  }
   if (type === 'items') {
     requireThat((record.kind === 'software' ? SOFTWARE_STAGES : GENERAL_STAGES).includes(record.stage), 'Stage does not belong to the selected workflow.');
     if (record.blocked) requireThat(record.blockReason.trim() && record.nextAction.trim(), 'Blocked work requires a reason and next action.');
@@ -71,18 +80,19 @@ export function createRecord(state: HubState, user: Member, type: Collection, in
   const today = localDate(new Date(now), state.settings.timezone);
   const defaults: Record<string, object> = {
     items: { description: '', workstreamId: user.workstreamIds[0] ?? state.workstreams[0]?.id, kind: 'software', category: 'feature', priority: 'Medium', ownerId: '', currentOwnerId: raw.ownerId ?? '', baselineDate: raw.dueDate ?? '', dueDate: '', acceptanceCriteria: '', evidenceLinks: [], blocked: false, blockReason: '', nextAction: '', clientSummary: '', clientVisible: false, tags: [] },
-    workstreams: { shortName: raw.name, description: '', leadId: user.id, health: 'unknown', statusNote: '', clientSummary: '', color: '#5b68d8' },
-    deliverables: { ownerId: user.id, description: '' },
+    workstreams: { shortName: raw.name, description: '', leadId: '', health: 'unknown', statusNote: '', clientSummary: '', color: '#8600d6' },
+    deliverables: { ownerId: '', description: '' },
     milestones: { workstreamIds: [], deliverableIds: [], ownerId: user.id, baselineDate: today, forecastDate: today, status: 'planned', notes: '' },
     registers: { type: 'issue', detail: '', clientSummary: '', clientVisible: false, relatedItemIds: [], milestoneIds: [], ownerId: user.id, dueDate: today, priority: 'Medium', probability: 'Medium', status: 'open', mitigation: '', nextAction: '', impact: '' },
     meetings: { heldAt: now, notes: '', linkedItemIds: [], linkedRegisterIds: [] },
   };
   const fields = schemas[type].parse({ ...defaults[type], ...raw });
   const record: any = { ...fields, id: id(), version: 1, updatedAt: now };
+  for (const key of Object.keys(record)) if (record[key] === undefined) delete record[key];
   if (type === 'items') Object.assign(record, { stage: 'Backlog', cycle: 1, createdAt: now, ...(record.blocked ? { blockedSince: now } : {}) });
   if (type === 'items' && !record.baselineDate && record.dueDate) record.baselineDate = record.dueDate;
   if (type === 'workstreams' || type === 'milestones') pmo(user);
-  else if (type !== 'meetings' && !['pmo', 'admin'].includes(user.role)) requireThat(user.workstreamIds.includes(record.workstreamId), 'Create records in your assigned workstreams.', 403);
+  else if (type !== 'meetings' && !['pmo', 'admin'].includes(user.role)) requireThat(assignedWorkstream(state, user, record.workstreamId), 'Create records in your assigned workstreams.', 403);
   validateReferences(state, type, record);
   (state[type] as any[]).push(record);
   audit(state, user, type, record.id, 'created', `Created ${record.title ?? record.name}`, null, record, now);
@@ -98,6 +108,7 @@ export function patchRecord(state: HubState, user: Member, type: Collection, rec
   const known = Object.keys(schemas[type].shape);
   requireThat(Object.keys(body.changes).every(k => known.includes(k) || ['id', 'version', 'updatedAt'].includes(k)), 'One or more fields require a dedicated workflow action.');
   const changes = schemas[type].partial().parse(body.changes) as Record<string, unknown>;
+  if (!['pmo', 'admin'].includes(user.role) && changes.workstreamId !== undefined && changes.workstreamId !== record.workstreamId) requireThat(assignedWorkstream(state, user, String(changes.workstreamId)), 'Move records only into your assigned use cases.', 403);
   if (type === 'items') {
     requireThat(record.stage !== 'Closed', 'Reopen this item before editing it.', 409);
     if (changes.kind !== undefined && changes.kind !== record.kind) requireThat(record.stage === 'Backlog', 'Workflow can only change in the backlog.');
@@ -108,6 +119,7 @@ export function patchRecord(state: HubState, user: Member, type: Collection, rec
   if (type === 'milestones' && changes.forecastDate && changes.forecastDate !== record.forecastDate) requireThat(body.reason?.trim(), 'Changing a milestone forecast requires a reason.');
   const before = structuredClone(record);
   Object.assign(record, changes);
+  for (const key of Object.keys(record)) if (record[key] === undefined) delete record[key];
   if (type === 'items') {
     if (!record.baselineDate && record.dueDate) record.baselineDate = record.dueDate;
     if (record.blocked && !before.blocked) record.blockedSince = now;
@@ -116,6 +128,17 @@ export function patchRecord(state: HubState, user: Member, type: Collection, rec
   validateReferences(state, type, record);
   touch(record, now);
   audit(state, user, type, record.id, 'updated', body.reason || 'Updated record', before, record, now);
+  // A record leaving a use case must invalidate that case's earlier review too.
+  // Its updated timestamp is no longer included by the old association scan.
+  const priorScope: string[] = before.workstreamIds ?? (before.workstreamId ? [before.workstreamId] : []);
+  const currentScope: string[] = record.workstreamIds ?? (record.workstreamId ? [record.workstreamId] : []);
+  if (JSON.stringify([...priorScope].sort()) !== JSON.stringify([...currentScope].sort())) {
+    for (const workstreamId of new Set([...priorScope, ...currentScope])) {
+      const workstream = getRecord(state.workstreams, workstreamId), prior = structuredClone(workstream);
+      touch(workstream, now);
+      audit(state, user, 'workstreams', workstreamId, 'association_changed', `Updated use-case association for ${record.title ?? record.name}`, prior, workstream, now);
+    }
+  }
   return record;
 }
 
@@ -155,8 +178,8 @@ export function transition(state: HubState, user: Member, itemId: string, input:
 export function localDate(date: Date, timezone: string) { return dateInTimezone(date, timezone); }
 export function period(now: Date, timezone: string, cutoffHour = 12) { return reportingPeriod(now, timezone, cutoffHour); }
 export function sourceVersions(state: HubState) {
-  const versions: Record<string, number> = {};
-  for (const key of ['workstreams', 'items', 'milestones', 'registers', 'submissions'] as const) for (const record of state[key]) versions[`${key}:${record.id}`] = record.version;
+  const versions: Record<string, number> = { 'settings:project': state.settings.version ?? 1 };
+  for (const key of ['workstreams', 'deliverables', 'items', 'milestones', 'registers', 'submissions'] as const) for (const record of state[key]) versions[`${key}:${record.id}`] = record.version;
   return versions;
 }
 export function latestStreamChange(state: HubState, workstreamId: string) {
@@ -191,7 +214,7 @@ export function reportDraft(state: HubState, user: Member, audience: 'internal' 
   const nextLabel = (item: WorkItem) => client ? `${item.clientSummary} — ${item.stage}` : `${item.title}: ${item.nextAction || item.stage}`;
   const openRegisters = registers.filter(r => r.status !== 'resolved').sort(order);
   const registerLabel = (record: typeof registers[number]) => `${recordAttention(record, state.settings, snapshotTime).escalationDue ? 'Needs escalation: ' : ''}${client ? record.clientSummary : `${record.title}: ${record.nextAction || record.impact}`}`;
-  const attentionItems = items.filter(i => i.stage !== 'Closed' && (i.blocked || i.dueDate < today) && !openRegisters.some(r => r.relatedItemIds.includes(i.id))).sort(order);
+  const attentionItems = items.filter(i => i.stage !== 'Closed' && (i.blocked || recordAttention(i, state.settings, snapshotTime).overdue) && !openRegisters.some(r => r.relatedItemIds.includes(i.id))).sort(order);
   const attentionLabel = (item: WorkItem) => `${recordAttention(item, state.settings, snapshotTime).escalationDue ? 'Needs escalation: ' : item.blocked ? 'Blocked: ' : 'Overdue: '}${client ? item.clientSummary : `${item.title}: ${item.blockReason || item.nextAction}`}`;
   const unique = (values: string[]) => [...new Set(values.filter(value => value.trim()))];
   const body: ReportBody = {

@@ -1,18 +1,22 @@
-# Phase Two · Delivery Desk
+# Phase Two · PMO Hub
 
-A local demonstrator for a small AI and data delivery team: one backlog, clear handoffs, connected blockers and decisions, and a Thursday briefing built from the same records.
+A desktop workspace connecting an AI consulting engagement's use-case portfolio to discovery, delivery, assurance and adoption. The portfolio is the starting point; work, risks, decisions, milestones and weekly reporting stay connected to it.
 
-The workspace combines a precise daily queue, connected delivery context, and an editorial client brief. Select an intervention to see its next action, both owners, recorded concerns, and associated milestones alongside the queue. Upcoming work stays in a separate list. Every count opens its matching records. Delivery retains distinct software/general boards and one item drawer for checks and handovers. Weekly reporting follows confirmation → draft review → approval and presentation. The app refreshes on window focus and once per minute while visible; a failed refresh keeps the last records with a visible warning.
+The workspace starts with ten confirmed names: Performance Portfolio Intelligence, Investment Companion, Legal Companion, Market Intelligence, Accounting Validation, Benchmark, AI Based Treasury Liquidity Management, Spreadsheet Intelligence, Public Finance and Budget Companion. Leads, priorities, phases, scope, dates and outcomes are **not yet set**. No project commitments or reports are invented.
 
-The accepted design combines Direction A for operations, B for briefings, and C for linked context from the supplied Claude Design study. [DESIGN.md](DESIGN.md) records the current visual system; [the integration record](docs/design/CLAUDE-INTEGRATION.md) distinguishes the design references from the live data and workflow implementation. The earlier [interactive wireframe study](http://127.0.0.1:4310/design-study.html) remains as a historical exploration, not the current visual specification. [Contribution guidance](docs/CONTRIBUTING.md) and the [review checklist](docs/REVIEW-CHECKLIST.md) explain the GitHub workflow.
+## What is connected
 
-Design review is on [`codex/design-overhaul`](https://github.com/nre17/PMO_APP/tree/codex/design-overhaul), in [PR #1](https://github.com/nre17/PMO_APP/pull/1). Point design tools at this branch to review the latest implementation; `main` currently preserves the original baseline.
+- **Use case portfolio:** searchable cards and list, lifecycle filters, editable brief, accountable lead, intended outcome, scope and next gate.
+- **Lifecycle artifacts:** proposal, discovery, design, evaluation and handover records, with owner, phase, recorded status and evidence links. These reuse deliverables, so tasks and milestones link to the same records. Artifact status is a recorded assessment, not a fabricated formal approval.
+- **Delivery overview:** interventions, upcoming work, register follow-ups, milestone variance and weekly confirmations. Selected work shows its next action, both owners and the provenance of linked context.
+- **Delivery:** separate software and general workflows, linked deliverables, testing, evidence, handoffs and client acceptance. A use-case phase does not change a task's workflow stage.
+- **Reporting:** lead confirmation → reviewed draft → approved edition. Client and internal content remain separate; approved editions are immutable snapshots.
 
-The fictional Northstar project contains 10 people, three workstreams, and 30 work items. It starts in **demo mode** with role switching, local persistence, and synthetic evidence links. It does not implement corporate sign-in and must not be used for real client information or exposed as a shared service.
+The consulting lifecycle is **Shaping → Discovery → Design → Build → Assurance → Release → Adoption**, covering RFP/proposals, prioritisation, current and target state, scope, semantics and architecture, engineering, QA, production and sustained outcomes. Phases can be revisited; the ribbon does not claim a calculated critical path or percentage complete.
 
 ## Run locally
 
-Use Node.js 24 and pnpm. From this directory:
+Use Node.js 24 and pnpm:
 
 ```powershell
 pnpm install
@@ -20,68 +24,46 @@ Copy-Item .env.example .env
 pnpm dev
 ```
 
-Open [the local delivery hub](http://127.0.0.1:4310). The initial persona is Nadia Rahman, PMO. Stop the server with Ctrl+C.
+Open [the PMO hub](http://127.0.0.1:4310). The new portfolio uses **PMO preview**. Role switching is a local demonstration capability, not corporate authentication. The app remains restricted to localhost; team use requires the identity and hosting work in [deployment readiness](docs/DEPLOYMENT.md).
 
-On Windows, when Node or pnpm is not on PATH, the launcher also checks the Codex bundled runtime under the current user's profile:
+If Node or pnpm is not on PATH, the Windows launcher checks the Codex bundled runtime:
 
 ```powershell
 .\scripts\start.ps1 -Install
-```
-
-The launcher uses `node.exe` and `pnpm.cmd` from PATH first, then falls back to `.cache\codex-runtimes\codex-primary-runtime\dependencies`. It changes PATH only for the running script and child process. Its default task is `dev`.
-
-```powershell
 .\scripts\start.ps1 -Task check
 .\scripts\start.ps1 -Task test
 .\scripts\start.ps1 -Task build
 .\scripts\start.ps1 -Task start
 ```
 
-## What to demonstrate
+Stop a server with Ctrl+C. Build before serving compiled assets; restart a compiled server after rebuilding. The launcher's PATH changes are confined to its process.
 
-- A software item moves through **Backlog → Development → UAT → Ready for production → Production verification → Awaiting client acceptance → Closed**. An internal team member records the client response and evidence. Rejection returns the same item to a complete rework cycle.
-- Data, evaluation, research, and general actions use **Backlog → In progress → Review → Closed**.
-- Delivery ownership remains visible while the current action owner changes immediately at each handoff. Any delivery teammate can record a test; routine delivery does not wait for PMO approval.
-- Blockers, decisions, meetings, milestones, and weekly confirmations link to the delivery records. Baseline dates remain distinct from changing forecasts.
-- Internal and client-safe reporting have separate content. Approved reports are saved snapshots; later delivery edits do not rewrite history.
+## Data profiles
 
-Follow [the demonstration walkthrough](docs/DEMO.md) for a practical ten-minute session.
-
-## Data and configuration
-
-The server uses embedded PostgreSQL through PGlite by default, persisted in `.data/pmo`. Restarting preserves your edits. If a stopped process leaves its ownership lock behind, startup recovers it only after confirming that process has exited; it leaves the database intact. A running owner or unknown ownership still prevents a second server from opening the same store. A new empty store is populated with fictional dates relative to its creation time. The reporting period ends Thursday in `Asia/Dubai`, with submissions due at 10:00 and reporting cutoff at 12:00. Resetting the demo recreates dates relative to the reset time; normal restart does not silently move commitments.
-
-To reset a disposable demo, stop its server first and run:
-
-```powershell
-pnpm demo:reset
-```
-
-This archives the current local store to a timestamped sibling backup; restarting then creates a fresh demonstration. Your previous edits are no longer shown in the fresh store. Check `DATA_DIR` before resetting. The command refuses external PostgreSQL and paths outside this workspace.
-
-See `.env.example` for available settings:
-
-| Setting | Default / purpose |
+| Setting | Meaning |
 | --- | --- |
-| `APP_MODE` | `demo`; live startup is blocked until corporate identity is implemented. |
-| `HOST` | `127.0.0.1`; retain loopback binding for this demonstrator. |
-| `PORT` | `4310` |
-| `DATA_DIR` | `.data/pmo`, for embedded storage. |
-| `DATABASE_URL` | Optional standard PostgreSQL connection string; database support does not enable live use. |
-| `OPENAI_API_KEY` | Optional server-side key, only for an approved processing environment. |
-| `OPENAI_MODEL` | `gpt-5.4-mini` by default; optional AI draft model. |
+| `SEED_PROFILE=portfolio` | Default. Seeds ten names into a new `.data/portfolio` store. |
+| `SEED_PROFILE=demo` | Opens the original `.data/pmo` synthetic Northstar scenario. |
+| `DATA_DIR` | Optional local storage path; overrides the profile's default path. |
+| `DATABASE_URL` | Optional PostgreSQL connection; the profile only seeds an empty database. |
+| `APP_MODE=demo` | Required local preview mode; non-demo startup is blocked. |
+| `HOST` / `PORT` | `127.0.0.1` / `4310` by default. |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | Optional server-side drafting configuration; manual operation works without AI. |
 
-Without AI configuration, manual work, deterministic reporting, and editing remain available. AI produces reviewable proposals; it does not approve reports, accept client responses, or automatically create commitments. Evidence URLs under `example.com/demo/evidence/` are fictional placeholders, not real project documents.
+**A profile selects a seed and default path, not a migration.** Existing stores and saved reports are preserved. Explicit `DATA_DIR` or `DATABASE_URL` wins; changing only the seed profile does not rewrite an existing database. Previous fictional records remain in `.data/pmo`, separate from the named portfolio.
 
-## Validate and build
+PGlite supplies local PostgreSQL storage. Restarts preserve edits and dates. Ownership locks prevent concurrent local servers opening the same store; a stale lock is reclaimed only after confirming its process exited.
+
+`pnpm demo:reset` archives the selected local store to a timestamped sibling backup. Stop its server and check `SEED_PROFILE` and `DATA_DIR` first. It refuses external PostgreSQL and paths outside the workspace. See [the walkthrough](docs/DEMO.md) for synthetic workflow examples.
+
+## Review and validation
 
 ```powershell
 pnpm check
 pnpm test
 pnpm build
-pnpm start
 ```
 
-`pnpm build` performs TypeScript checking and builds the browser app. `pnpm start` serves that build and the API from the same process. Build before starting production assets. The word "production" in the asset command does not activate corporate authentication or make demo mode safe for live use.
+[DESIGN.md](DESIGN.md) defines the desktop design. [Validation](docs/VALIDATION.md) and the [repository review](docs/REPOSITORY-REVIEW-2026-09-08.md) record coverage and boundaries. [Contribution guidance](docs/CONTRIBUTING.md) and the [review checklist](docs/REVIEW-CHECKLIST.md) describe the GitHub process.
 
-See [validation coverage](docs/VALIDATION.md) for the checks performed and [deployment readiness](docs/DEPLOYMENT.md) for the boundary between this local demonstrator and an approved shared installation.
+Current work is on [`codex/design-overhaul`](https://github.com/nre17/PMO_APP/tree/codex/design-overhaul), in [PR #1](https://github.com/nre17/PMO_APP/pull/1). Design tools should use this branch during review. Superseded standalone wireframes remain in Git history rather than shipping with the app.

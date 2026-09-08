@@ -18,7 +18,7 @@ export function Registers({ state, user, mutate, notify, openItem, initialSelect
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const isPMO = user.role === 'pmo' || user.role === 'admin';
-  const createStreams = state.workstreams.filter(stream => isPMO || user.workstreamIds.includes(stream.id));
+  const createStreams = state.workstreams.filter(stream => isPMO || user.workstreamIds.includes(stream.id) || (user.role === 'lead' && stream.leadId === user.id));
   const emptyDraft = (): RegisterDraft => ({
     type: activeType === 'all' ? 'risk' : activeType, title: '', detail: '', clientSummary: '', clientVisible: false,
     workstreamId: createStreams.find(stream => stream.id === workstreamId)?.id || createStreams[0]?.id || '',
@@ -75,23 +75,23 @@ export function Registers({ state, user, mutate, notify, openItem, initialSelect
       {canCreate && <button className="button primary" onClick={() => openEditor()}><Plus size={17} /> Add entry</button>}
     </div>
 
-    <div className="register-summary" aria-label="Register position for selected workstreams"><span><strong>{scoped.filter(entry => entry.status !== 'resolved').length}</strong>active entries</span><span><strong>{scoped.filter(entry => entry.status === 'escalated').length}</strong>escalated</span><span><strong>{scoped.filter(entry => recordAttention(entry, state.settings).overdue).length}</strong>overdue follow-ups</span><span><strong>{scoped.filter(entry => entry.type === 'decision' && entry.status !== 'resolved').length}</strong>decisions outstanding</span></div>
+    <div className="register-summary" aria-label="Register position for selected use cases"><span><strong>{scoped.filter(entry => entry.status !== 'resolved').length}</strong>active entries</span><span><strong>{scoped.filter(entry => entry.status === 'escalated').length}</strong>escalated</span><span><strong>{scoped.filter(entry => recordAttention(entry, state.settings).overdue).length}</strong>overdue follow-ups</span><span><strong>{scoped.filter(entry => entry.type === 'decision' && entry.status !== 'resolved').length}</strong>decisions outstanding</span></div>
 
     <section className="panel">
       <div className="panel-header" style={{ display: 'block' }}>
-        <div className="tabs" role="tablist" aria-label="Register type">
-          {(['all', 'risk', 'issue', 'dependency', 'decision', 'assumption'] as const).map(type => <button key={type} className={`tab ${activeType === type ? 'active' : ''}`} role="tab" aria-selected={activeType === type} onClick={() => setActiveType(type)}>
+        <div className="tabs" role="group" aria-label="Filter register type">
+          {(['all', 'risk', 'issue', 'dependency', 'decision', 'assumption'] as const).map(type => <button key={type} className={`tab ${activeType === type ? 'active' : ''}`} aria-pressed={activeType === type} onClick={() => setActiveType(type)}>
             {type === 'all' ? 'All entries' : registerPluralLabels[type]} <span className="muted">{scoped.filter(entry => type === 'all' || entry.type === type).length}</span>
           </button>)}
         </div>
         <div className="toolbar" style={{ marginTop: 18 }}>
           <div style={{ position: 'relative', flex: '1 1 240px' }}><Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--muted)' }} /><input className="input" aria-label="Search register" placeholder="Search entries or next actions…" value={query} onChange={event => setQuery(event.target.value)} style={{ paddingLeft: 36, width: '100%' }} /></div>
-          <select className="select" aria-label="Filter register workstream" value={workstreamId} onChange={event => setWorkstreamId(event.target.value)}><option value="all">All workstreams</option>{state.workstreams.map(workstream => <option key={workstream.id} value={workstream.id}>{workstream.name}</option>)}</select>
+          <select className="select" aria-label="Filter register use case" value={workstreamId} onChange={event => setWorkstreamId(event.target.value)}><option value="all">All use cases</option>{state.workstreams.map(workstream => <option key={workstream.id} value={workstream.id}>{workstream.name}</option>)}</select>
           <select className="select" aria-label="Filter register status" value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="active">Active entries</option><option value="all">All statuses</option><option value="open">Open</option><option value="monitoring">Monitoring</option><option value="escalated">Escalated</option><option value="resolved">Resolved</option></select>
         </div>
       </div>
       {filtered.length ? <div style={{ overflowX: 'auto' }}><table className="data-table register-table">
-        <thead><tr><th>Concern & impact</th><th>Workstream</th><th>Owner & next action</th><th>Follow-up date</th><th>Priority</th><th>Status</th></tr></thead>
+        <thead><tr><th>Concern & impact</th><th>Use case</th><th>Owner & next action</th><th>Follow-up date</th><th>Priority</th><th>Status</th></tr></thead>
         <tbody>{filtered.map(register => {
           const Icon = registerIcons[register.type];
           const owner = member(register.ownerId);
@@ -105,9 +105,9 @@ export function Registers({ state, user, mutate, notify, openItem, initialSelect
                 return item ? <button className="text-button" key={id} onClick={() => openItem(id)}><ArrowUpRight size={14} />{item.title}</button> : null;
               })}</div>}
             </div></div></td>
-            <td data-label="Workstream">{state.workstreams.find(workstream => workstream.id === register.workstreamId)?.shortName || 'Unassigned'}</td>
+            <td data-label="Use case">{state.workstreams.find(workstream => workstream.id === register.workstreamId)?.shortName || 'Unassigned'}</td>
             <td data-label="Owner & next action" style={{ minWidth: 200, maxWidth: 280 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{owner && <Avatar member={owner} size={26} />}<span>{owner?.name || 'Unassigned'}</span></div><div className="register-row-context">{register.nextAction || 'Next action not recorded'}</div></td>
-            <td data-label="Follow-up date" className={`register-due ${attention.overdue ? 'attention' : ''}`}>{register.dueDate ? formatDate(register.dueDate) : 'No date'}{attention.overdue ? <small>Overdue</small> : attention.dueToday ? <small>Due today</small> : attention.dueReminder ? <small>Due next working day</small> : null}</td>
+            <td data-label="Follow-up date" className={`register-due ${attention.overdue ? 'attention' : ''}`}>{register.dueDate ? formatDate(register.dueDate) : 'No date'}{attention.overdue ? <small>Overdue</small> : attention.dueToday ? <small>Due today</small> : attention.dueReminder ? <small>Due soon</small> : null}</td>
             <td data-label="Priority"><Badge tone={register.priority === 'Critical' ? 'red' : register.priority === 'High' ? 'amber' : 'neutral'}>{register.priority}</Badge></td>
             <td data-label="Status"><Badge tone={register.status === 'escalated' ? 'red' : register.status === 'resolved' ? 'green' : register.status === 'monitoring' ? 'amber' : 'neutral'}>{register.status.charAt(0).toUpperCase() + register.status.slice(1)}</Badge></td>
           </tr>;
@@ -115,13 +115,13 @@ export function Registers({ state, user, mutate, notify, openItem, initialSelect
       </table></div> : <div className="empty-state"><ClipboardList size={32} /><h3>No entries match this view</h3><p>Adjust your filters or add a register entry to make the next action clear.</p>{canCreate && <button className="button secondary" onClick={() => openEditor()}>Add entry</button>}</div>}
     </section>
 
-    {editing && <Modal title={editing === 'new' ? 'Add register entry' : draft.title} description={canUpdate ? 'Record the impact, owner, and next action.' : 'You can view this entry. Its owner, workstream lead, or PMO can update it.'} onClose={() => !saving && setEditing(null)} variant="drawer" className="register-workspace" wide>
+    {editing && <Modal title={editing === 'new' ? 'Add register entry' : draft.title} description={canUpdate ? 'Record the impact, owner, and next action.' : 'You can view this entry. Its owner, use case lead, or PMO can update it.'} onClose={() => !saving && setEditing(null)} variant="drawer" className="register-workspace" wide>
       <form onSubmit={save} className="stack">
         {error && <div className="notice notice-warning" role="alert">{error}</div>}
         <fieldset disabled={!canUpdate || saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="form-grid">
             <Field label="Type"><select className="select" value={draft.type} onChange={event => update('type', event.target.value as RegisterType)}>{Object.entries(registerLabels).map(([type, label]) => <option key={type} value={type}>{label}</option>)}</select></Field>
-            <Field label="Workstream"><select className="select" required value={draft.workstreamId} onChange={event => update('workstreamId', event.target.value)}>{(editing === 'new' ? createStreams : state.workstreams).map(workstream => <option key={workstream.id} value={workstream.id}>{workstream.name}</option>)}</select></Field>
+            <Field label="Use case"><select className="select" required value={draft.workstreamId} onChange={event => update('workstreamId', event.target.value)}>{(editing === 'new' ? createStreams : state.workstreams).map(workstream => <option key={workstream.id} value={workstream.id}>{workstream.name}</option>)}</select></Field>
             <div style={{ gridColumn: '1 / -1' }}><Field label="Title"><input className="input" value={draft.title} required maxLength={220} onChange={event => update('title', event.target.value)} placeholder="What needs to be addressed?" /></Field></div>
             <div style={{ gridColumn: '1 / -1' }}><Field label="Internal detail"><textarea className="textarea" rows={3} value={draft.detail} onChange={event => update('detail', event.target.value)} placeholder="Context, evidence and what happens if this remains unresolved." /></Field></div>
             <Field label="Accountable owner"><select className="select" required value={draft.ownerId} onChange={event => update('ownerId', event.target.value)}>{state.members.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></Field>

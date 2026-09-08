@@ -1,15 +1,17 @@
 export type Role = 'pmo' | 'lead' | 'contributor' | 'executive' | 'admin';
 export type Health = 'green' | 'amber' | 'red' | 'unknown';
 export type Priority = 'Low' | 'Medium' | 'High' | 'Critical';
+export const LIFECYCLE_PHASES = ['shaping', 'discovery', 'design', 'build', 'assurance', 'release', 'adoption'] as const;
+export type LifecyclePhase = typeof LIFECYCLE_PHASES[number];
 export type WorkflowKind = 'software' | 'general';
 export const SOFTWARE_STAGES = ['Backlog', 'Development', 'UAT', 'Ready for production', 'Production verification', 'Awaiting client acceptance', 'Closed'] as const;
 export const GENERAL_STAGES = ['Backlog', 'In progress', 'Review', 'Closed'] as const;
 export type Stage = typeof SOFTWARE_STAGES[number] | typeof GENERAL_STAGES[number];
 export interface Versioned { id: string; version: number; updatedAt: string }
 export interface Member { id: string; name: string; initials: string; role: Role; title: string; color: string; workstreamIds: string[]; canApproveReports: boolean }
-export interface Settings { projectName: string; phaseName: string; timezone: string; submissionHour: number; cutoffHour: number; blockedEscalationDays: number; workingDays: number[] }
-export interface Workstream extends Versioned { name: string; shortName: string; description: string; leadId: string; health: Health; statusNote: string; clientSummary: string; color: string }
-export interface Deliverable extends Versioned { title: string; workstreamId: string; ownerId: string; description: string }
+export interface Settings { version?: number; projectName: string; phaseName: string; timezone: string; submissionHour: number; cutoffHour: number; blockedEscalationDays: number; workingDays: number[] }
+export interface Workstream extends Versioned { name: string; shortName: string; description: string; leadId: string; health: Health; statusNote: string; clientSummary: string; color: string; lifecyclePhase?: LifecyclePhase; priority?: Priority; scope?: string; nextGate?: string; gateDate?: string }
+export interface Deliverable extends Versioned { title: string; workstreamId: string; ownerId: string; description: string; lifecyclePhase?: LifecyclePhase; status?: 'planned' | 'draft' | 'in_review' | 'accepted'; evidenceLinks?: string[] }
 export interface Milestone extends Versioned { title: string; workstreamIds: string[]; deliverableIds: string[]; ownerId: string; baselineDate: string; forecastDate: string; actualDate?: string; status: 'planned' | 'at_risk' | 'complete'; notes: string }
 export interface WorkItem extends Versioned {
   title: string; description: string; workstreamId: string; deliverableId?: string;

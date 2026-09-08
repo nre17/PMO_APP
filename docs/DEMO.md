@@ -1,66 +1,45 @@
-# Demonstration walkthrough
+# Local walkthroughs
 
-Allow about ten minutes. Start with a newly seeded local store if you want the exact states below; the app otherwise preserves previous edits. All names, work items, and evidence links are fictional.
+The portfolio and the fictional demonstration use separate profiles. Both use local preview roles, not corporate sign-in. Use synthetic business details while testing; the confirmed use-case names do not establish scope, ownership, delivery progress, or evidence.
 
-## 1. Start with the decisions, not the tracker
+## Start with the portfolio
 
-As **Nadia Rahman**, show the command center across Knowledge assistant, Data foundation, and Evaluation & assurance. Explain three visible exceptions:
+The default `SEED_PROFILE=portfolio` opens `.data/portfolio`. It contains the ten confirmed use-case names, generic local preview roles, and no work items, deliverables, milestones, confirmations, or reports. Leads and lifecycle positions begin unassigned. Existing local data is preserved on restart.
 
-- Finance source access is overdue and blocks ingestion validation.
-- The assistant pilot forecast has moved while its original baseline remains visible.
-- Weekly confirmation is fresh for Assistant, stale for Data, and missing for Evaluation. Evaluation's old green health is not a fresh confirmation.
+1. Open Use cases and select a confirmed name. Record an agreed purpose, scope, lifecycle phase, priority, and next gate when those facts are known. Assign a lead explicitly; a preview persona is only a local role for exercising the UI.
+2. Add a deliverable definition to that use case. Set its lifecycle phase and review status independently from technical work-item stages. Accepted deliverables require evidence.
+3. Capture a work item, then agree ownership, a target, next action, and acceptance criteria before starting delivery. Link it to the deliverable.
+4. Add a milestone with a baseline and current forecast. Link contributing use cases and deliverables explicitly. An association does not claim a critical path.
+5. Review progress from Overview and Project meetings. Save discovery, working-session, or delivery-review notes and add a reviewed follow-up with an owner and date. Later edits retain version conflicts and linked records.
+6. Review and confirm each use case's reporting position, prepare a draft for its audience, and use the appropriate preview role to exercise approval. An approved brief is a fixed edition; corrections preserve the original.
 
-Show that each item has a delivery owner and a current action owner. The PMO identifies exceptions and helps resolve ownership; the PMO is not the approver for every technical step.
+Leave unknown fields unassigned. A useful empty state is the correct result until work is recorded.
 
-## 2. Walk a normal handoff
+## Exercise the fictional workflow fixture
 
-Open **Use the agreed font across answer cards** (`work-assistant-03`). It starts in Development with Yusuf as the current owner and Leila as the delivery owner. Assign UAT to a delivery teammate and advance to UAT.
+To use populated examples without changing the portfolio, stop the running server and start a separate local store:
 
-Record a passing UAT result with a synthetic evidence URL, then move to Ready for production and name the release owner. Enter deployment evidence when moving to Production verification. A production verifier records a pass before the item moves to Awaiting client acceptance.
+```powershell
+$env:SEED_PROFILE = 'demo'
+$env:DATA_DIR = '.data/demo-walkthrough'
+pnpm dev
+```
 
-The app is internal only. An internal owner records the actual client response and its evidence. Accepting closes the item. This is not automatic approval inferred from a test result or a meeting note.
+These process environment values take precedence over `.env`. For the preserved earlier demonstration, explicitly choose `.data/pmo` instead. Changing the seed profile never rewrites a nonempty store. To return to the portfolio, stop the server and set `SEED_PROFILE=portfolio` and `DATA_DIR=.data/portfolio`.
 
-## 3. Show a failed test and client rejection
+A fresh fictional fixture contains Northstar's ten fictional people, three example use cases, thirty work items, and two historical client briefs. Dates are relative to store creation, so exact overdue counts change with the day of review.
 
-Open **Keep citation links in the current answer** (`work-assistant-01`). Its blocking UAT failure remains unresolved. Attempting to advance should explain the unmet condition. Record the resolution and a valid current-cycle pass before progressing, or return it to Development with a reason and assigned owner.
+- As Nadia Rahman, review finance access, the assistant pilot forecast, and current/stale/missing confirmations. Accountable ownership and the next action owner are distinct.
+- Move **Use the agreed font across answer cards** (`work-assistant-03`) from Development to UAT. Record a passing UAT check, hand over for release, supply deployment evidence, and record a passing production-verification check. Then record an explicit client response. Acceptance closes the item; rejection starts a new cycle on the same record.
+- Open **Keep citation links in the current answer** (`work-assistant-01`). Its blocking UAT finding prevents advancement until resolution and current-cycle evidence are recorded. Rework preserves earlier findings.
+- Review `reg-finance-access` and its actual item/milestone links. Capture a follow-up in Project meetings; it becomes one linked project record.
+- Confirm the example use cases, prepare a client draft, and review the wording. Switch to Omar Haddad to approve. Outstanding confirmations require a reason; that internal explanation is excluded from the presentation.
+- Open either historical client brief. Its content and period remain fixed when current work changes. Create a correction to revise an approved edition.
 
-Open **Improve the source freshness label** (`work-assistant-07`). Its first cycle passed internal checks, but the client rejected the wording. The same item is in Development, cycle two. Its prior evidence remains visible; it must complete the whole delivery and acceptance cycle again.
+The fixture includes `INTERNAL-ONLY-COMMERCIAL-NOTE` in internal support details. It must stay outside generated client report content and client AI requests. Do not manually copy internal material into client report fields. AI is optional; manual reporting and follow-up capture remain available without a key.
 
-Open **Capture answer feedback with an optional reason** (`work-assistant-02`). It has passed internal production verification and is waiting for client acceptance. Use this to explain why "deployed," "verified," and "closed" must remain distinct in reporting.
+Software work follows Backlog → Development → UAT → Ready for production → Production verification → Awaiting client acceptance → Closed. General work follows Backlog → In progress → Review → Closed. Any delivery teammate can record checks and routine handovers; PMO approval is not required for each technical step.
 
-## 4. Follow a blocker to its consequence
+## Restart and reset
 
-Open **Finance source access is overdue** (`reg-finance-access`). It links to both the access action and the blocked pipeline item, plus the at-risk UAT milestone. Arjun owns the next action; the next step is to obtain a dated access commitment.
-
-Show the daily delivery meeting. Its linked actions and decisions are the same live records seen elsewhere. Meeting notes do not create a separate action tracker.
-
-## 5. Confirm a workstream and prepare Thursday's brief
-
-Switch to the relevant workstream lead and review the current weekly update. Confirm Data or Evaluation after reviewing its live facts. A later change to a relevant delivery record makes that confirmation stale again.
-
-Switch back to Nadia to prepare a client-safe draft. Review completed work, next plans, dependencies, milestone forecasts, and confirmation coverage. The client draft uses client summaries, not internal descriptions or meeting notes.
-
-The synthetic phrase `INTERNAL-ONLY-COMMERCIAL-NOTE` appears in the internal pilot support details (`work-assistant-05`, `reg-support-coverage`). It must not appear in a generated client draft, client export, or client AI request. Do not manually paste internal content into client report fields.
-
-If optional AI is configured, request a wording proposal and inspect it before applying it. Otherwise edit the draft directly. Switch to **Omar Haddad**, the report approver, for publication. Incomplete confirmations require the explicit reason supported by the review workflow.
-
-Open one of the two historical approved client reports. Its content and publication time stay fixed after live records change. Corrections should create a new report version linked to the approved snapshot.
-
-## 6. Show nonsoftware work
-
-Open **Accept the benchmark sampling approach** (`work-evaluation-01`) or **Baseline missing-value rates for priority fields** (`work-data-05`). Both are completed general work with review evidence. They use review and acceptance criteria without artificial deployment stages.
-
-## Demo reference
-
-| Persona / record | ID |
-| --- | --- |
-| Nadia, default PMO | `pmo-nadia` |
-| Omar, report approver | `exec-omar` |
-| Assistant lead / workstream | `lead-leila` / `ws-assistant` |
-| Data lead / workstream | `lead-arjun` / `ws-data` |
-| Evaluation lead / workstream | `lead-sara` / `ws-evaluation` |
-| Closed software with recorded client acceptance | `work-assistant-09` |
-| Current assistant / data confirmations | `submission-assistant-current` / `submission-data-current` |
-| Historical approved client snapshots | `report-client-1` / `report-client-2` |
-
-The walkthrough is a demo script, not a claim that a live service has been approved or that placeholder evidence has been independently verified.
+Ordinary restart preserves records. `pnpm demo:reset` is a legacy command name: it archives the selected embedded store, and the next start seeds that profile again. Check `DATA_DIR` and `SEED_PROFILE`, and stop the server before using it. Use an isolated fixture directory for demonstrations instead of resetting the portfolio.

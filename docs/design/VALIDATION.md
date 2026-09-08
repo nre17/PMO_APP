@@ -2,6 +2,8 @@
 
 Reviewed on 7 September 2026 using fictional data in a separate local store. The original demonstration store was preserved.
 
+Historical design pass: its fonts, layout, and test count are superseded. See the [validation index](../VALIDATION.md) for the current review.
+
 ## Implemented experience
 
 - Overview: separate software/general pipelines, exact stage drill-down, intervention queue, register exceptions, weekly freshness, baseline/forecast milestone markers, and item distributions with explicit units.
@@ -34,4 +36,4 @@ Independent static review caught stale workstream filters behind Overview links,
 
 ## Limits
 
-This is agent-led browser and code review, not a usability study with the delivery team or a full accessibility certification. This redesign did not exercise an actual external AI service, corporate identity, shared hosting, email/Teams delivery, or real client data. Earlier backend/browser validation remains documented in [the baseline validation](../VALIDATION.md). GitHub CI results are tracked on the pull request; local checks alone do not establish a hosted CI result.
+This is agent-led browser and code review, not a usability study with the delivery team or a full accessibility certification. This redesign did not exercise an actual external AI service, corporate identity, shared hosting, email/Teams delivery, or real client data. Earlier backend/browser validation remains documented in [the baseline validation](BASELINE-VALIDATION-2026-09-07.md). GitHub CI results are tracked on the pull request; local checks alone do not establish a hosted CI result.

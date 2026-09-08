@@ -2,6 +2,8 @@
 
 Design research for Nicholas Habr · 7 September 2026
 
+Historical research synthesis. Its original visual recommendation predates the later design choices. Use the current [design contract](../../DESIGN.md) for implementation; retain the sources below as background evidence.
+
 ## Recommendation
 
 Build **Delivery Desk**: an operational workspace with a readable delivery pipeline, prioritized exceptions, contextual item actions, and a guided weekly report. Establish its typography, spacing, status language and interaction rules once, then review real workflows independently. This is our synthesis for the existing PMO app, not a measured user-study result.

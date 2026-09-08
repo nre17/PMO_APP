@@ -1,36 +1,45 @@
-# Demonstrator validation
+# Validation index
 
-This records the original functional baseline. See [Delivery Desk redesign review](design/VALIDATION.md) for the current 36-test result and redesigned browser walkthroughs.
+This index separates current automated coverage from dated historical browser evidence. A passing source/model test does not establish visual correctness or corporate deployment readiness.
 
-Validated locally on Windows with Node.js 24 on 7 September 2026.
+## Current coverage
 
-## Automated checks
+The active suite includes backend storage and permission invariants; exact reporting cutoffs and source freshness; delivery/overview filters and handover prerequisites; portfolio lifecycle, profile separation, artifact associations and permission boundaries. Client-report tests check internal-content exclusion and immutable approved snapshots. Import tests use real CSV/XLSX content and preserve stages without manufacturing completion evidence.
 
-All 26 tests passed: 15 backend workflow/storage tests and 11 cadence tests. The final TypeScript check and browser build passed.
+The final full `pnpm test` run on 8 September, repeated after the dependency updates, passed **62 of 62 tests**, with zero failures or skips: 45 existing tests, 13 portfolio API tests, and 4 portfolio model tests. This result covers the use-case portfolio revision; the dated records below retain their earlier counts.
 
-`pnpm test` covers software and general-work gates, blocking findings, rework, client acceptance, permission checks, optimistic concurrency rollback, confirmation freshness, immutable approved reports, client-content isolation, CSV/XLSX validation and export, idempotent imports, atomic meeting capture, database ownership and restart persistence.
+Run `pnpm test` for the suite and `pnpm build` for TypeScript checking plus optimized browser assets. A passing test run does not establish that every later source change was built or browser-tested.
 
-Cadence tests cover exact Thursday cutoffs, Dubai midnight, daylight-saving changes in London, configurable working days, late submissions, critical-blocker escalation, and accepted-completion selection. Imported historical closure does not fabricate acceptance evidence or count as a newly accepted completion.
+The [8 September repository audit](REPOSITORY-REVIEW-2026-09-08.md) records corrected defects, source/configuration coverage, cleanup, and remaining limitations. Automated server/model tests supplement the observed browser scenarios below.
 
-`pnpm build` checks TypeScript and builds the browser assets.
+Dependency maintenance was followed by a successful build, zero known production-dependency advisories from `pnpm audit --prod --json`, an XLSX conditional-formatting round-trip, and static asset/deep-link/API-fallback checks. The audit document records the exact resolved versions and compatibility evidence.
 
-An abrupt-exit regression verifies that committed edits survive stale-lock recovery and that simultaneous restarts cannot both own the local database. Unknown ownership leaves the lock and database untouched. The main demo also recovered successfully after a stopped Windows process left a stale lock.
+## Current browser observations
 
-## Browser checks
+These interactions were checked in an isolated local portfolio QA store on 8 September:
 
-The browser walkthrough used a separate fictional database so the main demonstration stays clean.
+- Saved a use-case profile: outcome, scope, lead, priority, lifecycle phase, next gate, and target date.
+- Saved an owned Discovery artifact in review with an evidence URL; linked a general research work item and observed the use-case active-work/artifact counts update to one each.
+- Applied the Discovery filter and received the single matching case; global search opened Legal Companion and restored access to all ten cases.
+- Opened the profile as the executive preview role: all edit fields were disabled and no save action appeared.
+- Saved meeting notes, changed the record concurrently through the API, and allowed the automatic refresh. Unsaved notes stayed visible, save was disabled, and the conflict explanation appeared. Explicit reload followed by two consecutive UI saves succeeded.
 
-- Captured a Backlog item, supplied its delivery prerequisites, and handed it from Development to UAT with a new action owner.
-- Recorded a blocking UAT failure and verified release advancement was disabled.
-- Started rework and verified the same item retained the earlier finding and advanced to a new delivery cycle.
-- Recorded client acceptance on an eligible item and verified it closed.
-- Confirmed three workstreams, prepared a client draft, switched to the executive persona, and approved a fixed edition.
-- Opened the separate presentation route and checked that internal-only sentinel content and workspace navigation were absent.
-- Saved meeting notes and captured a reviewed action linked to the meeting.
-- Verified the lead's My Actions queue shows an immediate critical-blocker escalation, an overdue commitment, a due-today item, a next-working-day reminder, and a stale workstream confirmation.
-- Inspected phone, embedded app-panel, and desktop layouts at 390, 762, and 1440 pixels; the inspected pages did not overflow horizontally.
-- No browser console errors were reported in the tested final walkthrough.
+The final compiled application was then checked on the main local port with the fresh portfolio store: ten confirmed names, four clearly labelled preview roles, and zero work items, artifacts, reports, lifecycle assignments, or leads. The earlier `.data/pmo` store was compared with its pre-switch capture and retained its thirty work items, two reports, and three example use cases. Equivalent ISO timestamp serialization was normalized for that comparison.
 
-## Not exercised externally
+At 1280×800 and 1440×900, the document had no horizontal overflow, the navigation rail stayed visible, and use-case names appeared in the first screen. The long treasury name wrapped in full; four case names appeared in the first 1440px viewport. Card/list switching showed the same ten cases. Weekly reporting and Delivery rendered with the purple theme. The final main-browser error log was empty.
 
-Configured AI generation, standard PostgreSQL, Docker image execution, corporate sign-in, and hosted deployment were not tested against external services. AI controls remain disabled without a configured key. Corporate identity and an approved hosting environment remain subsequent implementation work.
+The failed-second-upload import interaction has not been exercised in the browser. Its source fix must not be mistaken for an end-to-end regression result.
+
+## Historical evidence
+
+| Record | Scope |
+| --- | --- |
+| [Functional baseline — 7 September](design/BASELINE-VALIDATION-2026-09-07.md) | Initial workflow, persistence, import, report isolation and browser walkthrough. |
+| [First design pass — 7 September](design/VALIDATION.md) | Earlier Delivery Desk layout, item drawer, reporting workflow and narrow-screen checks. Its font/theme description is historical. |
+| [A/B/C integration — 8 September](design/VALIDATION-2026-09-08.md) | Operational queue, linked context, editorial reporting and observed browser scenarios before the later portfolio revision. |
+
+These records retain the counts and observations of their own runs. They are evidence, not instructions to keep obsolete interfaces.
+
+## Not established by local validation
+
+Corporate sign-in, shared hosting, a real AI provider, deployed standard PostgreSQL, Docker execution, a final PDF pagination review, accessibility certification, performance under a production workload, and usability with the actual delivery team have not been established by these local checks. Follow [deployment readiness](DEPLOYMENT.md) before planning shared use.

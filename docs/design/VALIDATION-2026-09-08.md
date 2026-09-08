@@ -2,6 +2,8 @@
 
 This validates the implemented A workspace, B briefing, and C linked context. It supersedes the earlier visual direction, while the 7 September workflow evidence remains a historical record.
 
+This is the historical A/B/C integration pass, before the use-case portfolio and purple workspace revision. Its observed counts and browser results are retained as evidence for that pass. See the [validation index](../VALIDATION.md) for subsequent coverage.
+
 ## Automated and structural checks
 
 - All **45 tests pass**: 15 backend, 11 cadence, 10 delivery presentation model, and 9 overview selector/filter tests.

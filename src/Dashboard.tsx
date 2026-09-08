@@ -83,7 +83,7 @@ export default function Dashboard(props:DashboardProps){
 
   return <div className="operational-overview">
     <header className="ov-page-heading">
-      <div><div className="ov-dateline">{now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:state.settings.timezone})}<span>All workstreams</span></div><h1>Delivery overview</h1><p>{counts.active} active work items. {counts.interventions?counts.interventions+' need intervention.':'No work is blocked, overdue, or awaiting a client response.'} {counts.dueSoon>0&&counts.dueSoon+' additional work items have due-date reminders.'}</p></div>
+      <div><div className="ov-dateline">{now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:state.settings.timezone})}<span>All use cases</span></div><h1>Delivery overview</h1><p>{counts.active} active work items. {counts.interventions?counts.interventions+' need intervention.':'No work is blocked, overdue, or awaiting a client response.'} {counts.dueSoon>0&&counts.dueSoon+' additional work items have due-date reminders.'}</p></div>
       <button className="button primary" onClick={startMeeting}><Play size={15}/>Run daily review</button>
     </header>
     <section className="ov-summary-strip" aria-label="Current project position">
@@ -91,7 +91,7 @@ export default function Dashboard(props:DashboardProps){
       <button onClick={()=>navigate('delivery','escalation')}><span>Escalation due</span><strong className={counts.escalations?'ov-overdue':''}>{counts.escalations}</strong><small>Critical blockers, or blocked {state.settings.blockedEscalationDays}+ working days</small></button>
       <button onClick={()=>navigate('delivery','due-soon')}><span>Additional due soon</span><strong>{counts.dueSoon}</strong><small>Due today or matching the working-day reminder</small></button>
       <button onClick={jumpToForecasts}><span>Forecasts beyond baseline</span><strong>{counts.forecastsBeyondBaseline}</strong><small>Current target later than the original commitment</small></button>
-      <button onClick={()=>navigate('reports')}><span>Workstreams confirmed</span><strong>{ready}<em> / {state.workstreams.length}</em></strong><small>Current updates for week ending {formatDate(period.end)}</small></button>
+      <button onClick={()=>navigate('reports')}><span>Use cases confirmed</span><strong>{ready}<em> / {state.workstreams.length}</em></strong><small>Current updates for week ending {formatDate(period.end)}</small></button>
     </section>
 
     <div className={'ov-review-layout '+(selected?'has-context':'')}>
@@ -120,8 +120,8 @@ export default function Dashboard(props:DashboardProps){
     </div>
 
     <section className="ov-workstream-section" aria-labelledby="overview-workstream-heading">
-      <div className="ov-section-heading"><div><h2 id="overview-workstream-heading">Across the workstreams</h2><p>Health is the lead’s assessment. Confirmation records whether this week’s facts are current.</p></div><div className="ov-heading-actions">{isPMO&&<button className="text-button" onClick={()=>setStream('new')}><Plus size={14}/>Add workstream</button>}<button className="button secondary small" onClick={()=>navigate('reports')}><FileCheck2 size={15}/>Prepare weekly report</button></div></div>
-      <div className="ov-stream-headings" aria-hidden="true"><span>Workstream / lead</span><span>Health & recorded position</span><span>Thursday confirmation</span><span>Delivery records</span></div>
+      <div className="ov-section-heading"><div><h2 id="overview-workstream-heading">Across the use cases</h2><p>Health is the lead’s assessment. Confirmation records whether this week’s facts are current.</p></div><div className="ov-heading-actions">{isPMO&&<button className="text-button" onClick={()=>setStream('new')}><Plus size={14}/>Add use case</button>}<button className="button secondary small" onClick={()=>navigate('reports')}><FileCheck2 size={15}/>Prepare weekly report</button></div></div>
+      <div className="ov-stream-headings" aria-hidden="true"><span>Use case / lead</span><span>Health & recorded position</span><span>Thursday confirmation</span><span>Delivery records</span></div>
       {state.workstreams.map(w=>{
         const confirmation=confirmationState(state,w.id,period.end);
         const timing=submissionTiming(period.end,state.settings,confirmation.confirmed?confirmation.submission?.confirmedAt:undefined,now);

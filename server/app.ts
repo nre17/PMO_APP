@@ -4,16 +4,20 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { Store } from './db.js';
 import { createSeedState } from './seed.js';
+import { createPortfolioState } from './portfolio-seed.js';
+import { seedConfiguration, type SeedProfile } from './seed-config.js';
 import { HttpError, audit, authorize, checkVersion, collection, createRecord, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, sourceVersions, streamConfirmed, textField, touch, transition } from './domain.js';
 import { aiAvailable, draftReport, extractNotes } from './ai.js';
 import { exportCsv, exportWorkbook, importFingerprint, previewImport } from './imports.js';
 import type { HubState, ImportPreview, Member, Report, Submission } from '../shared/types.js';
 
-export type AppOptions = { dataDir?: string; state?: HubState; testMode?: boolean; now?: () => Date; databaseUrl?: string; logger?: boolean };
+export type AppOptions = { dataDir?: string; seedProfile?: SeedProfile; state?: HubState; testMode?: boolean; now?: () => Date; databaseUrl?: string; logger?: boolean };
 export async function createApp(options: AppOptions = {}) {
   const now = () => (options.now?.() ?? new Date()).toISOString();
   requireThat((process.env.APP_MODE ?? 'demo') === 'demo', 'Corporate identity is not configured. Non-demo mode is disabled.', 503);
-  const store = await Store.open({ dataDir: options.dataDir ?? process.env.DATA_DIR, databaseUrl: options.testMode ? options.databaseUrl : options.databaseUrl ?? process.env.DATABASE_URL, initialState: options.state ?? createSeedState(new Date(now())) });
+  const configuration = seedConfiguration(options);
+  const initialState = options.state ?? (configuration.seedProfile === 'demo' ? createSeedState(new Date(now())) : createPortfolioState(new Date(now())));
+  const store = await Store.open({ dataDir: configuration.dataDir, databaseUrl: options.testMode ? options.databaseUrl : options.databaseUrl ?? process.env.DATABASE_URL, initialState });
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 8 * 1024 * 1024 });
   await app.register(cookie);
   const sessions = new Map<string, { userId: string; expires: number }>();
@@ -28,7 +32,7 @@ export async function createApp(options: AppOptions = {}) {
     reply.header('Cache-Control', 'no-store');
     const host = request.headers.host ?? '';
     const hostname = host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.split(':')[0];
-    requireThat(['localhost', '127.0.0.1', '::1'].includes(hostname), 'This synthetic demonstrator is restricted to localhost.', 403);
+    requireThat(['localhost', '127.0.0.1', '::1'].includes(hostname), 'This local preview is restricted to localhost.', 403);
     const origin = request.headers.origin;
     if (origin) {
       let parsed: URL;
@@ -74,7 +78,7 @@ export async function createApp(options: AppOptions = {}) {
   app.post('/api/demo/persona', async (request, reply) => {
     const state = await store.read(); current(request, state);
     const { userId } = z.object({ userId: z.string() }).parse(request.body);
-    requireThat(state.members.some(m => m.id === userId), 'Unknown fictional persona.');
+    requireThat(state.members.some(m => m.id === userId), 'Unknown local preview role.');
     if (request.cookies[sessionCookie]) sessions.delete(request.cookies[sessionCookie]);
     return { currentUserId: setSession(reply, userId) };
   });
@@ -197,8 +201,12 @@ export async function createApp(options: AppOptions = {}) {
   app.patch('/api/settings', request => mutate(request, (state, user, stamp) => {
     pmo(user);
     const schema = z.object({ projectName: z.string().trim().min(1).max(150), phaseName: z.string().trim().min(1).max(150), timezone: z.string().refine(v => { try { new Intl.DateTimeFormat('en', { timeZone: v }); return true; } catch { return false; } }, 'Use a valid IANA timezone.'), submissionHour: z.number().int().min(0).max(23), cutoffHour: z.number().int().min(0).max(23), blockedEscalationDays: z.number().int().min(1).max(30), workingDays: z.array(z.number().int().min(0).max(6)).min(1).max(7) });
-    const changes = schema.partial().strict().parse(request.body); const before = structuredClone(state.settings);
+    const { expectedVersion, ...fields } = z.object({ expectedVersion: z.number().int().positive() }).passthrough().parse(request.body);
+    const changes = schema.partial().strict().parse(fields); const before = structuredClone(state.settings);
+    const currentVersion = state.settings.version ?? 1;
+    requireThat(expectedVersion === currentVersion, 'Project settings changed. Refresh and review the latest settings before saving.', 409);
     Object.assign(state.settings, changes); requireThat(state.settings.submissionHour <= state.settings.cutoffHour, 'Submission time must be at or before cutoff.');
+    state.settings.version = currentVersion + 1;
     audit(state, user, 'settings', 'project', 'updated', 'Updated project cadence', before, state.settings, stamp);
     return state.settings;
   }));
