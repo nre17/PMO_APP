@@ -4,6 +4,8 @@ A desktop workspace connecting an AI consulting engagement's use-case portfolio 
 
 The workspace starts with ten confirmed names: Performance Portfolio Intelligence, Investment Companion, Legal Companion, Market Intelligence, Accounting Validation, Benchmark, AI Based Treasury Liquidity Management, Spreadsheet Intelligence, Public Finance and Budget Companion. Leads, priorities, phases, scope, dates and outcomes are **not yet set**. No project commitments or reports are invented.
 
+**Deployment target: Replit**, confirmed on 8 September 2026. The existing React interface, Node API and PostgreSQL store form the hosted application. The [Replit deployment plan](docs/DEPLOYMENT.md#replit-deployment-target) records the remaining hosting integration; the current release still runs as a local preview. [replit.md](replit.md) provides the project handoff for work in Replit.
+
 ## What is connected
 
 - **Use case portfolio:** searchable cards and list, lifecycle filters, editable brief, accountable lead, intended outcome, scope and next gate.
