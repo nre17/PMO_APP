@@ -18,7 +18,7 @@ export const entities = pgTable('hub_entities', {
 }, t => [primaryKey({ columns: [t.collection, t.id] })]);
 type Executor = { execute(query: SQL): Promise<{ rows: Record<string, unknown>[] }> };
 type Database = Executor & { transaction<T>(callback: (tx: Executor) => Promise<T>): Promise<T> };
-const collections = ['members', 'workstreams', 'deliverables', 'milestones', 'items', 'tests', 'registers', 'meetings', 'submissions', 'reports', 'events'] as const;
+const collections = ['members', 'workstreams', 'deliverables', 'milestones', 'items', 'tests', 'registers', 'meetings', 'submissions', 'reports', 'events', 'sourceDocuments', 'sourceRecords'] as const;
 
 type LockOwner = { pid: number; token: string };
 async function ownerOf(lockPath: string): Promise<LockOwner | undefined> {
@@ -76,7 +76,7 @@ export async function acquireLocalOwnership(dataDir: string): Promise<() => Prom
 
 function documents(state: HubState) {
   return [ { collection: 'settings', id: 'project', data: state.settings },
-    ...collections.flatMap(collection => state[collection].map(data => ({ collection, id: data.id, data }))) ];
+    ...collections.flatMap(collection => (state[collection] ?? []).map(data => ({ collection, id: data.id, data }))) ];
 }
 function reconstruct(rows: Record<string, unknown>[]): HubState {
   const state: Record<string, unknown> = {};

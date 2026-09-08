@@ -46,6 +46,7 @@ Stop a server with Ctrl+C. Build before serving compiled assets; restart a compi
 | --- | --- |
 | `SEED_PROFILE=portfolio` | Default. Seeds ten names into a new `.data/portfolio` store. |
 | `SEED_PROFILE=demo` | Opens the original `.data/pmo` synthetic Northstar scenario. |
+| `SEED_PROFILE=project` | Opens the isolated `.data/client` project store. Reviewed local intake supplies its records. |
 | `DATA_DIR` | Optional local storage path; overrides the profile's default path. |
 | `DATABASE_URL` | Optional PostgreSQL connection; the profile only seeds an empty database. |
 | `APP_MODE=demo` | Required local preview mode; non-demo startup is blocked. |
@@ -57,6 +58,19 @@ Stop a server with Ctrl+C. Build before serving compiled assets; restart a compi
 PGlite supplies local PostgreSQL storage. Restarts preserve edits and dates. Ownership locks prevent concurrent local servers opening the same store; a stale lock is reclaimed only after confirming its process exited.
 
 `pnpm demo:reset` archives the selected local store to a timestamped sibling backup. Stop its server and check `SEED_PROFILE` and `DATA_DIR` first. It refuses external PostgreSQL and paths outside the workspace. See [the walkthrough](docs/DEMO.md) for synthetic workflow examples.
+
+## Reviewed project intake
+
+The portfolio supports overlapping business groups, sourced briefs and separate tracker positions. **Project sources** retains source rows, original statuses, owner text, dates, comments and file fingerprints. Active rows enter delivery as intake; ambiguous statuses create confirmation actions. Source-reported completion remains separate from tests or acceptance recorded in the hub. Missing operational facts remain unset.
+
+Private extraction and reviewed bundles belong under ignored `artifacts/`; project records live under ignored `.data/client`. Keep them out of commits and public assets. The local intake command previews by default:
+
+```powershell
+pnpm exec tsx server/intake-cli.ts artifacts/reviewed-bundle.json .data/client
+pnpm exec tsx server/intake-cli.ts artifacts/reviewed-bundle.json .data/client --apply
+```
+
+Stop any server using that store before applying. The command preserves a local JSON backup. Stable document/row keys prevent duplicates; source revisions retain human edits in linked work and flag reconciliation. Source profiles fill missing fields and preserve conflicting edits. Set `SEED_PROFILE=project` and remove an old `DATA_DIR` override (or point it to `.data/client`) to open the project workspace. This imports snapshots; it does not connect to Teams or live Excel.
 
 ## Review and validation
 

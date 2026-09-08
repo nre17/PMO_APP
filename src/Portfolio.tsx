@@ -3,7 +3,7 @@ import { ArrowRight, ArrowUpRight, Calculator, ChartNoAxesCombined, Check, Chevr
 import { LIFECYCLE_PHASES, type Deliverable, type Milestone, type PageProps, type Workstream } from '../shared/types';
 import { Avatar, Badge, Field, Modal, SafeLink, formatDate, healthLabel } from './ui';
 import { MilestoneForm } from './Delivery';
-import { artifactStatusLabels, canCreateArtifact, canEditArtifact, canEditUseCase, phaseGuidance, phaseLabels, selectPortfolio, selectUseCaseRelated, type LifecyclePhase } from './portfolio-model';
+import { artifactStatusLabels, canCreateArtifact, canEditArtifact, canEditUseCase, phaseGuidance, phaseLabels, selectPortfolio, selectUseCaseRelated, workstreamGroups, type LifecyclePhase } from './portfolio-model';
 import './portfolio.css';
 
 type PortfolioProps = PageProps & {
@@ -33,6 +33,7 @@ export function Portfolio(props: PortfolioProps) {
   const { state, user, initialSelection, onWorkstream, onDelivery } = props;
   const [query, setQuery] = useState('');
   const [phase, setPhase] = useState<LifecyclePhase | 'all' | 'unset'>('all');
+  const [group, setGroup] = useState('all');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [sort, setSort] = useState<'name' | 'phase' | 'priority'>('name');
   const [selectedId, setSelectedId] = useState<string | undefined>(initialSelection?.id);
@@ -41,20 +42,21 @@ export function Portfolio(props: PortfolioProps) {
   const summary = useMemo(() => selectPortfolio(state), [state]);
   useEffect(() => {
     if (!initialSelection) return;
-    setPhase('all'); setQuery(''); setSelectedId(initialSelection.id);
+    setPhase('all'); setGroup('all'); setQuery(''); setSelectedId(initialSelection.id);
   }, [initialSelection?.id, initialSelection?.key]);
   const visible = useMemo(() => state.workstreams.filter(stream => {
     const lead = state.members.find(member => member.id === stream.leadId)?.name || '';
-    return (phase === 'all' || (phase === 'unset' ? !stream.lifecyclePhase : stream.lifecyclePhase === phase)) &&
-      [stream.name, stream.shortName, stream.description, stream.scope, lead].join(' ').toLowerCase().includes(query.trim().toLowerCase());
+    return (group === 'all' || (group ? workstreamGroups(stream).includes(group) : !workstreamGroups(stream).length)) && (phase === 'all' || (phase === 'unset' ? !stream.lifecyclePhase : stream.lifecyclePhase === phase)) &&
+      [stream.name, stream.shortName, stream.description, stream.scope, ...workstreamGroups(stream), stream.phaseLabel, lead].join(' ').toLowerCase().includes(query.trim().toLowerCase());
   }).sort((a, b) => {
     if (sort === 'name') return a.name.localeCompare(b.name);
     if (sort === 'phase') return (a.lifecyclePhase ? LIFECYCLE_PHASES.indexOf(a.lifecyclePhase) : 99) - (b.lifecyclePhase ? LIFECYCLE_PHASES.indexOf(b.lifecyclePhase) : 99) || a.name.localeCompare(b.name);
     if (sort === 'priority') return (a.priority ? priorityOrder[a.priority] : 99) - (b.priority ? priorityOrder[b.priority] : 99) || a.name.localeCompare(b.name);
     return 0;
-  }), [state, phase, query, sort]);
+  }), [state, phase, query, group, sort]);
+  const hasGroups = summary.groups.some(value => !!value.name);
   const selected = visible.find(stream => stream.id === selectedId) || visible[0];
-  const filtered = phase !== 'all' || !!query.trim();
+  const filtered = phase !== 'all' || group !== 'all' || !!query.trim();
   const editArtifact = (streamId: string, value?: Deliverable) => setArtifactEditor({ streamId, value });
 
   return <div className="portfolio-workspace">
@@ -63,10 +65,11 @@ export function Portfolio(props: PortfolioProps) {
       <div className="portfolio-hero-copy">
         <span className="portfolio-kicker">{state.settings.phaseName} / Use-case portfolio</span>
         <h1>The AI portfolio<span>.</span></h1>
-        <p>{summary.phaseSet === 0 ? 'Start with the brief. Add the confirmed outcome, lead and next gate for each use case.' : 'See where each use case stands, what comes next, and the work behind it.'}</p>
+        <p>{state.sourceDocuments?.length ? `${summary.currentTrackerRecords} current tracker rows across ${summary.trackerCoveredUseCases} use cases. Keep source context alongside the delivery plan.` : summary.phaseSet === 0 ? 'Start with the brief. Add the confirmed outcome, lead and next gate for each use case.' : 'See where each use case stands, what comes next, and the work behind it.'}</p>
       </div>
       <div className="portfolio-hero-facts"><div className="portfolio-total"><strong>{summary.total.toString().padStart(2, '0')}</strong><span>use cases<br/>in the portfolio</span></div><dl><div><dt>Lifecycle phase set</dt><dd>{summary.phaseSet}<span> / {summary.total}</span></dd></div><div><dt>Next gate recorded</dt><dd>{summary.gatesSet}<span> / {summary.total}</span></dd></div><div><dt>Lifecycle artifacts</dt><dd>{summary.artifacts}</dd></div></dl></div>
     </header>
+    {(state.sourceRecords || []).some(record => record.disposition === 'needs_review') && <div className="portfolio-source-review"><div><strong>{(state.sourceRecords || []).filter(record => record.disposition === 'needs_review').length} source statuses to reconcile</strong><span>Review the original status and its linked follow-up before changing delivery work.</span></div><a className="text-link" href="#sources">Review source records <ArrowUpRight size={15}/></a></div>}
 
     <section className="portfolio-lifecycle" aria-labelledby="portfolio-lifecycle-title">
       <div className="portfolio-section-heading"><div><span className="portfolio-section-index">01</span><h2 id="portfolio-lifecycle-title">The lifecycle</h2><p>A use-case phase sits above the task workflow.</p></div><button className={`portfolio-unset ${phase === 'unset' ? 'is-active' : ''}`} aria-pressed={phase === 'unset'} onClick={() => setPhase(phase === 'unset' ? 'all' : 'unset')}>{summary.phaseUnset} not yet set <ChevronRight size={15}/></button></div>
@@ -76,7 +79,7 @@ export function Portfolio(props: PortfolioProps) {
 
     <section className="portfolio-catalog" aria-labelledby="portfolio-catalog" id="portfolio-catalog-region">
       <div className="portfolio-section-heading"><div><span className="portfolio-section-index">02</span><h2 id="portfolio-catalog" tabIndex={-1}>The use cases</h2><p>{filtered ? `${visible.length} of ${summary.total} match your view` : 'Choose a use case to open its brief and linked work.'}</p></div><div className="portfolio-catalog-actions">{canEditUseCase(user) && <button className="button secondary small" onClick={() => onWorkstream('new')}><Plus size={15}/>Add use case</button>}<div className="portfolio-view-switch" aria-label="Portfolio layout"><button aria-label="Card view" aria-pressed={view === 'grid'} className={view === 'grid' ? 'is-active' : ''} onClick={() => setView('grid')}><LayoutGrid size={17}/></button><button aria-label="List view" aria-pressed={view === 'list'} className={view === 'list' ? 'is-active' : ''} onClick={() => setView('list')}><List size={19}/></button></div></div></div>
-      <div className="portfolio-tools"><div className="search-input"><Search size={18}/><input aria-label="Search use cases" placeholder="Find a use case, outcome or lead…" value={query} onChange={event => setQuery(event.target.value)}/>{query && <button className="icon-button" aria-label="Clear use-case search" onClick={() => setQuery('')}><X size={16}/></button>}</div><label className="portfolio-sort">Order by<select value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Name</option><option value="phase">Lifecycle phase</option><option value="priority">Priority</option></select></label><span className="portfolio-results" role="status">{visible.length} {visible.length === 1 ? 'use case' : 'use cases'}</span>{filtered && <button className="text-button" onClick={() => { setPhase('all'); setQuery(''); }}>Clear filters</button>}</div>
+      <div className="portfolio-tools"><div className="search-input"><Search size={18}/><input aria-label="Search use cases" placeholder="Find a use case, outcome or lead…" value={query} onChange={event => setQuery(event.target.value)}/>{query && <button className="icon-button" aria-label="Clear use-case search" onClick={() => setQuery('')}><X size={16}/></button>}</div>{hasGroups&&<label className="portfolio-sort portfolio-group-filter">Group<select aria-label="Filter portfolio group" value={group} onChange={event=>setGroup(event.target.value)}><option value="all">All groups</option>{summary.groups.map(value=><option key={value.name} value={value.name}>{value.name||'Not yet grouped'} ({value.count})</option>)}</select></label>}<label className="portfolio-sort">Order by<select value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Name</option><option value="phase">Lifecycle phase</option><option value="priority">Priority</option></select></label><span className="portfolio-results" role="status">{visible.length} {visible.length === 1 ? 'use case' : 'use cases'}</span>{filtered && <button className="text-button" onClick={() => { setPhase('all'); setGroup('all'); setQuery(''); }}>Clear filters</button>}</div>
       <div className={`portfolio-layout ${!selected ? 'no-selection' : ''}`}>
         <div className={`portfolio-cards portfolio-cards-${view}`}>
           {visible.map(stream => {
@@ -85,11 +88,11 @@ export function Portfolio(props: PortfolioProps) {
             const Glyph = useCaseGlyph(stream.name);
             return <button key={stream.id} className={`portfolio-card ${selected?.id === stream.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === stream.id} aria-controls="portfolio-selected-case" onClick={() => setSelectedId(stream.id)}>
               <span className="portfolio-card-top"><span className="portfolio-card-glyph" aria-hidden="true"><Glyph size={21}/></span><span className={`portfolio-phase-tag ${stream.lifecyclePhase ? 'is-set' : ''}`}>{stream.lifecyclePhase ? phaseLabels[stream.lifecyclePhase] : notSet}</span><ArrowUpRight size={18}/></span>
-              <strong className="portfolio-card-title">{stream.name}</strong>
-              <span className="portfolio-card-bottom"><span className="portfolio-card-person">{lead && <Avatar member={lead} size={25}/>}<span><span>Lead</span>{lead?.name || notSet}</span></span><span className="portfolio-card-records"><span>{related.activeItems.length} active work</span><span>{related.artifacts.length} artifacts</span></span></span>
+              <strong className="portfolio-card-title">{stream.name}</strong>{workstreamGroups(stream).length>0&&<span className="portfolio-group-chips">{workstreamGroups(stream).map(name=><span key={name}>{name}</span>)}</span>}
+              <span className="portfolio-card-bottom"><span className="portfolio-card-person">{lead && <Avatar member={lead} size={25}/>}<span><span>Lead</span>{lead?.name || notSet}</span></span><span className="portfolio-card-records"><span>{related.activeItems.length} active work</span><span>{related.artifacts.length} artifacts</span>{!!state.sourceDocuments?.length&&<span>{related.currentTrackerRecords.length} current tracker rows</span>}</span></span>
             </button>;
           })}
-          {!visible.length && <div className="portfolio-empty"><Search size={27}/><h3>{summary.total ? 'No use cases match this view' : 'A place for your next use case'}</h3><p>{summary.total ? 'Try a different name or include every lifecycle phase.' : 'Add the name first. Build out the brief when the facts are confirmed.'}</p>{filtered ? <button className="button secondary" onClick={() => { setPhase('all'); setQuery(''); }}>Show all use cases</button> : canEditUseCase(user) && <button className="button primary" onClick={() => onWorkstream('new')}>Add use case</button>}</div>}
+          {!visible.length && <div className="portfolio-empty"><Search size={27}/><h3>{summary.total ? 'No use cases match this view' : 'A place for your next use case'}</h3><p>{summary.total ? 'Try a different name or include every lifecycle phase.' : 'Add the name first. Build out the brief when the facts are confirmed.'}</p>{filtered ? <button className="button secondary" onClick={() => { setPhase('all'); setGroup('all'); setQuery(''); }}>Show all use cases</button> : canEditUseCase(user) && <button className="button primary" onClick={() => onWorkstream('new')}>Add use case</button>}</div>}
         </div>
         {selected && <UseCaseDetail key={selected.id} {...props} stream={selected} editArtifact={editArtifact} openMilestone={setMilestone}/>}
       </div>
@@ -127,6 +130,7 @@ function UseCaseDetail({ stream, editArtifact, openMilestone, ...props }: Portfo
     <div className="portfolio-detail-body" ref={detailBody}>
       {tab === 'brief' && <>
         <dl className="portfolio-profile-meta"><div><dt>Lifecycle phase</dt><dd>{stream.lifecyclePhase ? phaseLabels[stream.lifecyclePhase] : notSet}</dd></div><div><dt>Priority</dt><dd>{stream.priority || notSet}</dd></div><div className="portfolio-meta-wide"><dt>Accountable lead</dt><dd>{lead ? <span className="portfolio-person"><Avatar member={lead} size={27}/>{lead.name}</span> : notSet}</dd></div></dl>
+        {(workstreamGroups(stream).length || stream.phaseLabel || stream.sources?.length || related.sourceRecords.length) ? <section className="portfolio-source-context"><div className="portfolio-inline-heading"><h3>Source context</h3><a className="text-link" href="#sources">View sources <ArrowUpRight size={14}/></a></div><dl><div><dt>Portfolio group</dt><dd>{workstreamGroups(stream).join(' · ') || notSet}</dd></div><div><dt>Source label</dt><dd>{stream.phaseLabel || notSet}</dd></div></dl><p className="portfolio-source-coverage"><strong>{related.currentTrackerRecords.length}</strong> current tracker {related.currentTrackerRecords.length === 1 ? 'row' : 'rows'} linked</p>{related.currentTrackerRecords.length > 0 && <div className="portfolio-source-statuses">{[...new Set(related.currentTrackerRecords.map(record => record.sourceStatus || 'Not stated'))].map(status => <span key={status}>{status} <b>{related.currentTrackerRecords.filter(record => (record.sourceStatus || 'Not stated') === status).length}</b></span>)}</div>}{!!stream.sources?.length && <ul className="portfolio-source-references">{stream.sources.map((reference, index) => { const document = state.sourceDocuments?.find(value => value.id === reference.documentId); const matchesRevision = !reference.fileHash || reference.fileHash === document?.fileHash; return <li key={`${reference.documentId}-${reference.locator}-${index}`}><strong>{document?.name || 'Source document unavailable'}</strong><span>{reference.locator || 'Location not stated'}{matchesRevision && document?.sourceDate ? ` · ${formatDate(document.sourceDate, { day: 'numeric', month: 'short', year: 'numeric', timeZone: state.settings.timezone })}` : ''}</span>{!matchesRevision && <><span>{document?.fileHash ? 'Earlier source revision · date not recorded' : 'Pinned source revision · date not recorded'}</span><span>Pinned fingerprint: <code>{reference.fileHash}</code></span></>}{matchesRevision && document?.coverage === 'context' && <span>Historical / project context</span>}</li>; })}</ul>}</section> : null}
         {isUnshaped && <div className="portfolio-profile-invitation"><span className="portfolio-invitation-mark" aria-hidden="true">›</span><div><h3>The name is the starting point.</h3><p>Bring in the confirmed brief to give this use case an outcome, scope and next gate.</p></div></div>}
         <section className="portfolio-brief-section"><h3>Intended outcome</h3><p className={!stream.description ? 'is-unset' : ''}>{stream.description || notSet}</p></section>
         <section className="portfolio-brief-section"><h3>Scope</h3><p className={!stream.scope ? 'is-unset' : ''}>{stream.scope || notSet}</p></section>

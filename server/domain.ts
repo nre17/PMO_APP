@@ -19,11 +19,11 @@ const unassignedMember = z.string().trim().max(150);
 export const itemSchema = z.object({
   title, description: textField, workstreamId: title, deliverableId: z.string().optional(),
   kind: z.enum(['software', 'general']), category: z.enum(['feature', 'bug', 'data', 'evaluation', 'action', 'research']),
-  priority, ownerId: z.string().trim().max(150), currentOwnerId: z.string().trim().max(150), baselineDate: day.or(z.literal('')), dueDate: day.or(z.literal('')), acceptanceCriteria: textField,
+  priority: priority.or(z.literal('Not set')), ownerId: z.string().trim().max(150), currentOwnerId: z.string().trim().max(150), baselineDate: day.or(z.literal('')), dueDate: day.or(z.literal('')), acceptanceCriteria: textField,
   evidenceLinks: links, blocked: z.boolean(), blockReason: textField, nextAction: textField,
   clientSummary: textField, clientVisible: z.boolean(), tags: z.array(z.string().max(40)).max(20),
 });
-const workstreamSchema = z.object({ name: title, shortName: title, description: textField, leadId: unassignedMember, health, statusNote: textField, clientSummary: textField, color: z.string().max(40), lifecyclePhase: optionalPhase, priority: optionalPriority, scope: textField.optional(), nextGate: textField.optional(), gateDate: day.or(z.literal('')).optional() });
+const workstreamSchema = z.object({ name: title, shortName: title, description: textField, leadId: unassignedMember, health, statusNote: textField, clientSummary: textField, color: z.string().max(40), lifecyclePhase: optionalPhase, priority: optionalPriority, scope: textField.optional(), nextGate: textField.optional(), gateDate: day.or(z.literal('')).optional(), group: z.string().trim().max(100).optional(), groups: z.array(z.string().trim().min(1).max(100)).max(10).optional(), phaseLabel: z.string().trim().max(160).optional() });
 const deliverableSchema = z.object({ title, workstreamId: title, ownerId: unassignedMember, description: textField, lifecyclePhase: optionalPhase, status: z.enum(['planned', 'draft', 'in_review', 'accepted']).nullish().transform(value => value ?? undefined), evidenceLinks: links.optional() });
 const milestoneSchema = z.object({ title, workstreamIds: z.array(title).min(1), deliverableIds: z.array(title), ownerId: title, baselineDate: day, forecastDate: day, actualDate: day.optional(), status: z.enum(['planned', 'at_risk', 'complete']), notes: textField });
 const registerSchema = z.object({ type: z.enum(['risk', 'assumption', 'issue', 'dependency', 'decision']), title, detail: textField, clientSummary: textField, clientVisible: z.boolean(), workstreamId: title, relatedItemIds: z.array(title).max(50), milestoneIds: z.array(title).max(30), ownerId: title, dueDate: day, priority, probability: z.enum(['Low', 'Medium', 'High']), status: z.enum(['open', 'monitoring', 'escalated', 'resolved']), mitigation: textField, nextAction: textField, impact: textField });
@@ -201,7 +201,7 @@ export function reportDraft(state: HubState, user: Member, audience: 'internal' 
   const items = state.items.filter(i => !client || (i.clientVisible && i.clientSummary.trim()));
   const registers = state.registers.filter(r => !client || (r.clientVisible && r.clientSummary.trim()));
   const label = (i: WorkItem) => client ? i.clientSummary : i.title;
-  const priorities = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  const priorities = { Critical: 0, High: 1, Medium: 2, Low: 3, 'Not set': 4 };
   const order = <T extends { dueDate: string; priority: keyof typeof priorities }>(a: T, b: T) => a.dueDate.localeCompare(b.dueDate) || priorities[a.priority] - priorities[b.priority];
   const today = localDate(snapshotTime, state.settings.timezone);
   const nextHorizon = shiftDate(today, 7);

@@ -8,7 +8,7 @@ export interface DeliveryFilters { query: string; workstream: string; owner: str
 
 export function selectDeliveryItems(state: HubState, filters: DeliveryFilters, now = new Date()): WorkItem[] {
   const query = filters.query.trim().toLocaleLowerCase();
-  const priority = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  const priority = { Critical: 0, High: 1, Medium: 2, Low: 3, 'Not set': 4 };
   const overview = ['intervention', 'due-soon', 'escalation', 'overdue'].includes(filters.status) ? selectOverview(state, now) : undefined;
   const overviewRows = !overview ? [] : filters.status === 'due-soon' ? overview.dueSoon : filters.status === 'escalation' ? overview.interventions.filter(row => row.flags.escalationDue) : filters.status === 'overdue' ? overview.interventions.filter(row => row.flags.overdue) : overview.interventions;
   const overviewIds = new Set(overviewRows.map(row => row.item.id));
@@ -62,4 +62,4 @@ export const handoffLabel = (item: WorkItem): string => ({
   Closed: 'View delivery history',
 }[item.stage]);
 
-export const itemStageLabel = (item: WorkItem) => item.stage === 'Closed' && item.importedFrom && !item.closedAt ? 'Imported closed' : item.stage;
+export const itemStageLabel = (item: WorkItem) => item.stage === 'Backlog' && item.importedFrom?.startsWith('source:') ? 'Intake' : item.stage === 'Closed' && item.importedFrom && !item.closedAt ? 'Imported closed' : item.stage;

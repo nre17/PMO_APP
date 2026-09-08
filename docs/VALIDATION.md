@@ -6,7 +6,9 @@ This index separates current automated coverage from dated historical browser ev
 
 The active suite includes backend storage and permission invariants; exact reporting cutoffs and source freshness; delivery/overview filters and handover prerequisites; portfolio lifecycle, profile separation, artifact associations and permission boundaries. Client-report tests check internal-content exclusion and immutable approved snapshots. Import tests use real CSV/XLSX content and preserve stages without manufacturing completion evidence.
 
-The final full `pnpm test` run on 8 September, repeated after the dependency updates, passed **62 of 62 tests**, with zero failures or skips: 45 existing tests, 13 portfolio API tests, and 4 portfolio model tests. This result covers the use-case portfolio revision; the dated records below retain their earlier counts.
+The portfolio revision passed **62 of 62 tests** on 8 September after the dependency updates. The reviewed-intake revision subsequently passed a full **74 of 74** run, followed by **17 of 17** focused intake tests after five additional regressions were added. The current suite contains 79 tests; GitHub Actions runs the complete suite and build on Windows and Linux for each revision.
+
+The intake tests use synthetic fixtures. They cover source dispositions, stable row identity, repeat imports, preservation of human edits, source revisions, pinned evidence, historical-source restrictions, permissions, validation, explicit general actions, storage defaults, persistence and rollback. The final local production build passed after the source screens were integrated.
 
 Run `pnpm test` for the suite and `pnpm build` for TypeScript checking plus optimized browser assets. A passing test run does not establish that every later source change was built or browser-tested.
 
@@ -15,6 +17,8 @@ The [8 September repository audit](REPOSITORY-REVIEW-2026-09-08.md) records corr
 Dependency maintenance was followed by a successful build, zero known production-dependency advisories from `pnpm audit --prod --json`, an XLSX conditional-formatting round-trip, and static asset/deep-link/API-fallback checks. The audit document records the exact resolved versions and compatibility evidence.
 
 ## Current browser observations
+
+The reviewed-intake workspace was checked after a server restart: overlapping portfolio groups, original tracker statuses beside intake stages, linked status-confirmation actions, completed and deferred source filters, and source-file/row references. Counts persisted and a repeat intake preview produced no changes. The final browser error log was empty. Local documents and project records are excluded from this repository; these observations do not establish a live connection to the source systems.
 
 These interactions were checked in an isolated local portfolio QA store on 8 September:
 
