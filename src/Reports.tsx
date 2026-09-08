@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock3, Copy, ExternalLink, FileText, History, LockKeyhole, Pencil, RefreshCw, Sparkles } from 'lucide-react';
 import type { HubState, PageProps, Report, ReportBody, Submission, Workstream } from '../shared/types';
 import { Avatar, Badge, Field, Modal, formatDate, healthLabel } from './ui';
@@ -32,32 +32,33 @@ function BriefList({ values, empty }: { values: string[]; empty: string }) {
 export function ReportPresentation({ report }: { report: Report }) {
   return <article className="report-page delivery-report">
     <header className="report-cover">
-      <div className="report-audience">{report.audience === 'client' ? 'Client delivery brief' : 'Internal delivery brief'}</div>
-      <div className="report-meta"><span>{formatDate(report.periodStart)} — {formatDate(report.periodEnd, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span><span>{report.status === 'approved' ? 'Approved edition' : 'Draft · for review'}</span></div>
+      <div className="report-masthead"><div className="report-audience">{report.audience === 'client' ? 'Client delivery brief' : 'Internal delivery brief'}</div><span className="report-edition-status">{report.status === 'approved' ? <LockKeyhole size={13} aria-hidden="true" /> : <Pencil size={13} aria-hidden="true" />}{report.status === 'approved' ? 'Approved edition' : 'Draft · for review'}</span></div>
+      <div className="report-dateline"><span>Reporting period</span><span><time dateTime={report.periodStart}>{formatDate(report.periodStart)}</time> — <time dateTime={report.periodEnd}>{formatDate(report.periodEnd, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</time></span></div>
       <h1>{report.title}</h1>
-      <p>{report.body.summary}</p>
+      <p className="report-lede">{report.body.summary}</p>
     </header>
     <div className="report-columns">
       <section className="report-section"><h2>This week</h2><BriefList values={report.body.highlights} empty="No completed outcomes recorded for this period." /></section>
       <section className="report-section"><h2>Next week</h2><BriefList values={report.body.nextWeek} empty="Next steps will be confirmed in the next update." /></section>
     </div>
-    <section className="report-section report-attention"><h2>Attention & decisions</h2><BriefList values={report.body.attention} empty="No additional decisions or escalations recorded." /></section>
-    {report.body.workstreams.length > 0 && <section className="report-section"><h2>Workstream outlook</h2><div className="stack">{report.body.workstreams.map((stream, index) => <div className="report-workstream" key={`${stream.name}-${index}`}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}><h3>{stream.name}</h3><Badge tone={stream.health}>{healthLabel[stream.health]}</Badge></div>
-      {!stream.confirmed && <p className="muted">{report.status === 'approved' ? 'Workstream confirmation was outstanding at publication.' : 'Workstream confirmation is outstanding for this edition.'}</p>}
+    <section className={`report-section report-attention ${report.body.attention.some(value => value.trim()) ? 'has-attention' : ''}`}><h2>Attention & decisions</h2><BriefList values={report.body.attention} empty="No additional decisions or escalations recorded." /></section>
+    {report.body.workstreams.length > 0 && <section className="report-section"><h2>Workstream outlook</h2><div className="report-workstream-list">{report.body.workstreams.map((stream, index) => <div className="report-workstream" key={`${stream.name}-${index}`}>
+      <header className="report-workstream-heading"><h3>{stream.name}</h3><Badge tone={stream.health}>{healthLabel[stream.health]}</Badge></header>
+      {!stream.confirmed && <p className="report-confirmation-note"><Clock3 size={14} aria-hidden="true" />{report.status === 'approved' ? 'Workstream confirmation was outstanding at publication.' : 'Workstream confirmation is outstanding for this edition.'}</p>}
       <div className="report-columns"><div><h4>Progress</h4><BriefList values={stream.completed} empty="No completed outcomes recorded." /></div><div><h4>Next steps</h4><BriefList values={stream.next} empty="No further steps recorded." /></div></div>
       {stream.attention.some(value => value.trim()) && <div><h4>Attention</h4><BriefList values={stream.attention} empty="" /></div>}
     </div>)}</div></section>}
-    {report.body.milestones.length > 0 && <section className="report-section"><h2>Milestones</h2><table className="data-table"><thead><tr><th>Milestone</th><th>Forecast</th><th>Outlook</th></tr></thead><tbody>{report.body.milestones.map((milestone, index) => <tr key={index}><td>{milestone.title}</td><td>{formatDate(milestone.forecastDate)}</td><td>{milestone.status === 'at_risk' ? 'At risk' : milestone.status === 'complete' ? 'Complete' : milestone.status === 'planned' ? 'Planned' : milestone.status}</td></tr>)}</tbody></table></section>}
-    <footer className="report-meta" style={{ paddingTop: 24, marginTop: 18, borderTop: '1px solid var(--border, #e7e7ee)' }}><span>Information as of {formatDate(report.asOf, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' })} GST</span><span>{report.status === 'approved' ? 'A fixed record of this reporting period' : 'Review required before publication'}</span></footer>
+    {report.body.milestones.length > 0 && <section className="report-section"><h2>Milestones</h2><table className="data-table"><thead><tr><th scope="col">Milestone</th><th scope="col">Forecast</th><th scope="col">Outlook</th></tr></thead><tbody>{report.body.milestones.map((milestone, index) => <tr key={index}><td>{milestone.title}</td><td>{formatDate(milestone.forecastDate)}</td><td>{milestone.status === 'at_risk' ? 'At risk' : milestone.status === 'complete' ? 'Complete' : milestone.status === 'planned' ? 'Planned' : milestone.status}</td></tr>)}</tbody></table></section>}
+    <footer className="report-folio"><span>Information as of <time dateTime={report.asOf}>{formatDate(report.asOf, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' })}</time> GST</span><span>{report.status === 'approved' ? 'A fixed record of this reporting period' : 'Review required before publication'}</span></footer>
   </article>;
 }
 
 type ConfirmationDraft = Pick<Submission, 'workstreamId' | 'completed' | 'next' | 'changes' | 'blockers' | 'health' | 'sourceUpdatedAt'>;
 
-export function Reports({ state, user, mutate, notify, aiAvailable }: PageProps) {
+export function Reports({ state, user, mutate, notify, aiAvailable, initialView = 'current', onCurrentPeriod }: PageProps & { initialView?: 'current' | 'archive'; onCurrentPeriod?:()=>void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<'current' | 'archive'>('current');
+  const [view, setView] = useState<'current' | 'archive'>(initialView);
+  const [archiveStatus, setArchiveStatus] = useState<'all' | Report['status']>(initialView === 'archive' ? 'approved' : 'all');
   const [step, setStep] = useState<number | null>(null);
   const [currentAudience, setCurrentAudience] = useState<Report['audience']>('client');
   const [audienceFilter, setAudienceFilter] = useState<'all' | Report['audience']>('all');
@@ -70,12 +71,16 @@ export function Reports({ state, user, mutate, notify, aiAvailable }: PageProps)
   const [proposal, setProposal] = useState<{ report: Report; body: ReportBody } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    setView(initialView); setSelectedId(null); setStep(null); setError('');
+    setArchiveStatus(initialView === 'archive' ? 'approved' : 'all');
+  }, [initialView]);
   const isPMO = user.role === 'pmo' || user.role === 'admin';
   const periodRange = reportingPeriod(new Date(), state.settings.timezone, state.settings.cutoffHour);
   const periodEnd = periodRange.end;
   const streams = state.workstreams.map(stream => ({ ...stream, readiness: confirmationState(state, stream.id, periodEnd) }));
   const confirmedCount = streams.filter(stream => stream.readiness.confirmed).length;
-  const reports = useMemo(() => [...state.reports].filter(report => view === 'current' ? report.periodEnd === periodEnd && report.audience === currentAudience : audienceFilter === 'all' || report.audience === audienceFilter).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [state.reports, view, periodEnd, currentAudience, audienceFilter]);
+  const reports = useMemo(() => [...state.reports].filter(report => view === 'current' ? report.periodEnd === periodEnd && report.audience === currentAudience : (audienceFilter === 'all' || report.audience === audienceFilter) && (archiveStatus === 'all' || report.status === archiveStatus)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [state.reports, view, periodEnd, currentAudience, audienceFilter, archiveStatus]);
   const selected = reports.find(report => report.id === selectedId) || reports[0];
   const sources = sourceRecords(state);
   const changedSources = selected?.status === 'draft' ? sources.filter(source => selected.sourceVersions[source.key] !== source.version) : [];
@@ -99,7 +104,7 @@ export function Reports({ state, user, mutate, notify, aiAvailable }: PageProps)
   async function createReport(audience: Report['audience'], supersedesId?: string) {
     await perform(async () => {
       const report: Report = await mutate('/api/reports', { audience, ...(supersedesId ? { supersedesId } : {}) }, 'POST');
-      setAudienceFilter('all'); setCurrentAudience(report.audience); setView(report.periodEnd === periodEnd ? 'current' : 'archive'); setStep(1); setSelectedId(report.id); closeDialogs();
+      setAudienceFilter('all'); setArchiveStatus('all'); setCurrentAudience(report.audience); setView(report.periodEnd === periodEnd ? 'current' : 'archive'); setStep(1); setSelectedId(report.id); closeDialogs();
       notify(supersedesId ? 'Correction draft created. The approved report is preserved.' : 'Draft prepared from the current reporting sources.');
     });
   }
@@ -139,8 +144,8 @@ export function Reports({ state, user, mutate, notify, aiAvailable }: PageProps)
   const textField = (label: string, key: 'highlights' | 'nextWeek' | 'attention', rows = 4) => editor && <Field label={label}><textarea className="textarea" rows={rows} value={lines(editor.body[key])} onChange={event => setEditor({ ...editor, body: { ...editor.body, [key]: event.target.value.split('\n') } })} /></Field>;
   return <div className="stack reporting-workspace">
     <div className="page-header">
-      <div><h1 className="page-title">{view === 'current' ? 'Weekly report' : 'Previous editions'}</h1><p className="page-subtitle">{view === 'current' ? `Week ending ${formatDate(periodEnd, { day: 'numeric', month: 'long', year: 'numeric' })} · Confirm the position, review the wording, publish a fixed edition.` : 'Saved drafts, approved snapshots, and their corrections.'}</p></div>
-      <button className="button secondary" onClick={() => { setView(view === 'current' ? 'archive' : 'current'); setSelectedId(null); setStep(null); setError(''); }}>{view === 'current' ? <History size={16} /> : <ArrowLeft size={16} />}{view === 'current' ? 'Previous editions' : 'Current period'}</button>
+      <div><h1 className="page-title">{view === 'current' ? 'Weekly report' : archiveStatus === 'approved' ? 'Approved briefs' : 'Previous editions'}</h1><p className="page-subtitle">{view === 'current' ? `Week ending ${formatDate(periodEnd, { day: 'numeric', month: 'long', year: 'numeric' })} · Confirm the position, review the wording, publish a fixed edition.` : archiveStatus === 'approved' ? 'Published delivery positions, preserved exactly as approved.' : 'Saved drafts, approved snapshots, and their corrections.'}</p></div>
+      <button className="button secondary" onClick={() => { if(view==='archive'&&initialView==='archive'&&onCurrentPeriod){onCurrentPeriod();return;} setView(view === 'current' ? 'archive' : 'current'); setArchiveStatus('all'); setSelectedId(null); setStep(null); setError(''); }}>{view === 'current' ? <History size={16} /> : <ArrowLeft size={16} />}{view === 'current' ? 'Previous editions' : 'Current period'}</button>
     </div>
 
     {view === 'current' ? <>
@@ -153,8 +158,8 @@ export function Reports({ state, user, mutate, notify, aiAvailable }: PageProps)
         ].map((item, index) => <button key={item.title} className={`report-workflow-step ${activeStep === index ? 'active' : ''}`} onClick={() => setStep(index)} aria-current={activeStep === index ? 'step' : undefined}><span className={`report-step-number ${item.done ? 'complete' : ''}`}>{item.done ? <Check size={16} /> : index + 1}</span><span><strong>{item.title}</strong><small>{item.detail}</small></span></button>)}
       </nav>
     </> : <section className="panel report-editions">
-      <div className="panel-header"><div><h2 className="section-title">All saved editions</h2><p className="muted">Approval fixes an edition. A correction keeps the original available.</p></div><select className="select" aria-label="Filter archived report audience" value={audienceFilter} onChange={event => { setAudienceFilter(event.target.value as typeof audienceFilter); setSelectedId(null); }}><option value="all">All audiences</option><option value="client">Client</option><option value="internal">Internal</option></select></div>
-      <div className="report-edition-list">{reports.length ? reports.map(report => <button key={report.id} className={`report-edition ${selected?.id === report.id ? 'active' : ''}`} onClick={() => { setSelectedId(report.id); setError(''); }} aria-current={selected?.id === report.id ? 'true' : undefined}><strong>{formatDate(report.periodEnd)}</strong><span>{report.audience === 'client' ? 'Client' : 'Internal'} · {report.supersedesId ? 'Correction' : 'Original'} · v{report.version}</span><span>{report.status === 'approved' ? <LockKeyhole size={14} /> : <Pencil size={14} />}{report.status === 'approved' ? 'Approved' : 'Draft'} · {formatDate(report.createdAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: state.settings.timezone })}</span></button>) : <p className="muted">No saved editions for this audience.</p>}</div>
+      <div className="panel-header"><div><h2 className="section-title">{archiveStatus === 'approved' ? 'Approved editions' : archiveStatus === 'draft' ? 'Saved drafts' : 'All saved editions'}</h2><p className="muted">Approval fixes an edition. A correction keeps the original available.</p></div><div className="report-archive-filters"><label>Status<select className="select" value={archiveStatus} onChange={event => { setArchiveStatus(event.target.value as typeof archiveStatus); setSelectedId(null); }}><option value="approved">Approved</option><option value="draft">Drafts</option><option value="all">All editions</option></select></label><label>Audience<select className="select" value={audienceFilter} onChange={event => { setAudienceFilter(event.target.value as typeof audienceFilter); setSelectedId(null); }}><option value="all">All audiences</option><option value="client">Client</option><option value="internal">Internal</option></select></label></div></div>
+      <div className="report-edition-list">{reports.length ? reports.map(report => <button key={report.id} className={`report-edition ${selected?.id === report.id ? 'active' : ''}`} onClick={() => { setSelectedId(report.id); setError(''); }} aria-current={selected?.id === report.id ? 'true' : undefined}><strong>{formatDate(report.periodEnd)}</strong><span>{report.audience === 'client' ? 'Client' : 'Internal'} · {report.supersedesId ? 'Correction' : 'Original'} · v{report.version}</span><span>{report.status === 'approved' ? <LockKeyhole size={14} /> : <Pencil size={14} />}{report.status === 'approved' ? 'Approved' : 'Draft'} · {formatDate(report.createdAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: state.settings.timezone })}</span></button>) : <p className="muted">No editions match these filters.</p>}</div>
     </section>}
 
     {error && !creating && !editor && !approval && !confirmation && !proposal && <div className="notice notice-warning" role="alert">{error}</div>}
@@ -185,7 +190,7 @@ export function Reports({ state, user, mutate, notify, aiAvailable }: PageProps)
             {selected.status === 'approved' && isPMO && <button className="button secondary" disabled={busy} onClick={() => createReport(selected.audience, selected.id)}><RefreshCw size={15} />Create correction</button>}
           </div></div>
           <ReportPresentation report={selected} />
-        </> : <section className="panel report-first-draft"><FileText size={32} /><h3>{view === 'archive' ? 'No edition selected' : `No ${currentAudience} draft for this period`}</h3><p>{view === 'archive' ? 'Choose an audience with saved editions.' : 'A draft combines the recorded delivery position, milestone forecasts, and summaries for this audience.'}</p>{view === 'current' && !isPMO && <p className="muted">A PMO team member prepares the draft after workstream review.</p>}</section>}
+        </> : <section className="panel report-first-draft"><FileText size={32} /><h3>{view === 'archive' ? 'No edition selected' : `No ${currentAudience} draft for this period`}</h3><p>{view === 'archive' ? 'Choose another status or audience to find a saved edition.' : 'A draft combines the recorded delivery position, milestone forecasts, and summaries for this audience.'}</p>{view === 'current' && !isPMO && <p className="muted">A PMO team member prepares the draft after workstream review.</p>}</section>}
       </section>
 
       <aside className="report-review-sidebar" aria-label="Report review checklist">

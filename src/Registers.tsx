@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowUpRight, Check, CircleHelp, ClipboardList, GitBranch, Plus, Search, ShieldAlert } from 'lucide-react';
 import type { PageProps, Register, RegisterType } from '../shared/types';
 import { Avatar, Badge, Field, Modal, canEdit, formatDate } from './ui';
@@ -9,7 +9,7 @@ const registerPluralLabels: Record<RegisterType, string> = { risk: 'Risks', assu
 const registerIcons = { risk: ShieldAlert, assumption: CircleHelp, issue: AlertTriangle, dependency: GitBranch, decision: Check };
 type RegisterDraft = Omit<Register, 'id' | 'version' | 'updatedAt'>;
 
-export function Registers({ state, user, mutate, notify, openItem }: PageProps) {
+export function Registers({ state, user, mutate, notify, openItem, initialSelection }: PageProps & {initialSelection?:{id:string;key:number}}) {
   const [activeType, setActiveType] = useState<RegisterType | 'all'>('all');
   const [query, setQuery] = useState('');
   const [workstreamId, setWorkstreamId] = useState('all');
@@ -51,6 +51,7 @@ export function Registers({ state, user, mutate, notify, openItem }: PageProps) 
       setEditing('new');
     }
   }
+  useEffect(()=>{if(initialSelection){const register=state.registers.find(r=>r.id===initialSelection.id);if(register)openEditor(register);}},[initialSelection]);
   async function save(event: React.FormEvent) {
     event.preventDefault();
     if (!canUpdate || !editing || saving) return;

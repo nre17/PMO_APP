@@ -4,16 +4,18 @@ The app helps a small delivery team know what needs attention, who acts next, an
 
 ## Chosen direction
 
-Delivery Desk combines a structured working surface with a visible delivery pipeline and a composed report page. Release Room was considered but overemphasizes engineering. Weekly Journal was considered but puts reporting before daily execution. This is a deliberate design choice for this project, not a finding that one aesthetic is universally superior.
+The user selected **Direction A as the main workspace**, with **Direction B's editorial treatment for Reports** and **Direction C's linked context for selected work**, on 8 September 2026. The supplied Claude mockups are design references. The application keeps its existing data model, authorization, evidence, handoff, and reporting rules.
+
+Overview leads with a compact operational table and a clear distinction between intervention and upcoming work. Context follows the selected record. The earlier dark pipeline hero is superseded; workflow stages remain useful in Delivery and item details. Reports remain composed documents with an explicit audience and publication state. This is a project-specific design choice, not a claim of demonstrated usability improvement.
 
 ## Visual contract
 
-- Body: locally bundled Source Sans 3, 15px default; headings: locally bundled Manrope, 30–34px page title, 19–22px section title. Working labels are at least 13px. Use sentence case, tabular numeric values and full task titles.
-- Canvas `#f3f5f8`; surfaces `#ffffff`; ink `#16283f`; muted text `#53657b`; border `#dbe2eb`; primary cobalt `#2458d3`; primary hover `#1847b6`; dark focus surface `#172c46`.
-- Semantic color: success `#167052`, attention `#925700`, danger `#af3347`. Pair every color with text or a meaningful symbol. Person avatars use neutral initials, not status-like colors.
-- Shared CSS variables: `--primary`, `--primary-dark`, `--border`, `--muted`, `--ink`, `--green`, `--amber`, `--red`, `--radius`, `--surface`, `--canvas`, `--heading-font`, `--body-font`.
-- Space in multiples of 4px, typically 8/12/16/24/32. Controls 40px minimum by default, icon targets 36px minimum; use 44px on touch layouts. Panels 12px radius, controls 7px. Avoid nested panels and decorative drop shadows.
-- Light 208px navigation rail. Working surfaces receive the visual emphasis. One clear primary action per action group, descriptive secondary actions, visible keyboard focus, reduced-motion support.
+- Main UI: locally bundled Atkinson Hyperlegible Next, 15px body default and approximately 25–28px page titles. Fira Code is reserved for compact references, numbers, and metadata. Working content should remain at least 13px; small secondary identifiers must not carry the only essential instruction. Use sentence case, tabular numeric values, and full task titles.
+- Canvas `#fbfbfa`; surfaces `#ffffff`; ink `#16191d`; muted text `#626b73`; border `#e2e4e6`; primary teal `#0f7378`; primary hover `#095a5e`. Use quiet rules and whitespace to distinguish sections instead of a dominant colored hero.
+- Semantic color: success `#1d6f42`, attention `#8a5a00`, danger `#a8271f`. Pair every color with text or a meaningful symbol. Person avatars use neutral initials, not status-like colors. Pending confirmation is distinct from an overdue commitment or delivery risk.
+- Shared CSS variables: `--primary`, `--primary-dark`, `--border`, `--muted`, `--ink`, `--green`, `--amber`, `--red`, `--radius`, `--surface`, `--canvas`, `--heading-font`, `--body-font`, `--mono-font`.
+- Space in multiples of 4px, typically 8/12/16/24/32. Controls 40px minimum by default, icon targets 36px minimum; use 44px on touch layouts. Shared panels and controls use restrained 2–3px corners. Avoid nested cards and decorative drop shadows.
+- A quiet navigation rail, approximately 216px on a full desktop, leaves the working surface dominant. One clear primary action per action group, descriptive secondary actions, visible keyboard focus, and reduced-motion support.
 - Prefer practical density over tiny text. Tables have explicit headings and readable rows. On narrow screens, use task rows and stacked content rather than shrinking the desktop canvas.
 
 ## Four wireframes
@@ -21,18 +23,24 @@ Delivery Desk combines a structured working surface with a visible delivery pipe
 ### 1. Overview
 
 ```
-Navigation | Project / All workstreams                 Search   Create
-           | Delivery overview                         Run daily review
-           | [Software changes | General work]
-           | [Backlog → Development → UAT → Ready → Verify → Client → Closed]
-           | [   n           n         n       n        n        n        n  ]
-           | Action queue (why now, owner, next move) | This Thursday
-           | 4–6 prioritized rows                     | Confirmation checklist
-           | Workstream position                     | Milestone outlook
-           | Lead / health rationale / actual counts | Baseline / forecast / actual
+Navigation | Project / Overview                 Updated as of…    Add work
+           | Delivery overview                              Run daily review
+           | Active work · Interventions · Escalations · Awaiting client
+           | Interventions table                   | Selected work context
+           | Work / why now / owner / target       | Next action and evidence
+           | Select a row to inspect context       | Linked register entries
+           |                                      | Milestones + link provenance
+           | Due soon: today + configured reminders | Reporting readiness
+           | Separate upcoming-work queue          | Confirmation deadlines
+           | Milestone baseline / forecast / calendar variance
+           | Workstream health and recorded rationale
 ```
 
-Pipeline stages are equal width, with current item counts. They are not a funnel or effort-complete percentage. The software/general toggle uses canonical separate workflows. Clicking a stage filters the delivery list. Blocked items are a subset of stage counts. Mobile places the action queue before a compact pipeline and stacks the remaining sections. Workstream bars show labeled item distributions, separating imported historical closure from recorded acceptance.
+Interventions include active blocked work, overdue work, and work awaiting client acceptance. Rank escalation first, then blocked, overdue, and client response, with target dates breaking ties. An item with several reasons appears once. Due-soon work is active, due today or covered by the existing next-working-day reminder rule, and excluded from interventions. Counters and Delivery shortcuts use the same selectors; overlapping blocked/overdue/client counts are not additive.
+
+Selected-work context uses explicit register links and item-to-deliverable-to-milestone membership. Label each association's provenance; never imply a critical path, causal dependency, or milestone impact from shared workstream alone. Show unresolved register exceptions separately from work-item counts. Keep blocked duration separate from overdue duration.
+
+On narrow screens, prioritize interventions, reveal selected context without shrinking the table, and stack upcoming work and reporting sections. Completion counts distinguish recorded closures from imported historical closure. Milestone variance means calendar days between recorded baseline and forecast; it is not a count of changes this week. Any stage distribution remains a count of records, not an effort-complete percentage.
 
 ### 2. Delivery
 
@@ -71,10 +79,10 @@ Current step content / report canvas          Review checklist
                                               Information as of / approval
 ```
 
-Separate preparing this period from browsing historical editions. Keep audience obvious. Show stale source context for work, registers and milestones. Preserve approved snapshots and historical corrections. AI assists wording through reviewable proposals; it never silently changes records or approves an edition.
+Use Direction B's editorial hierarchy: a clear title, period, summary, restrained section rules, and readable report text. Separate preparing this period from browsing historical editions. Keep audience obvious. Show stale source context for work, registers and milestones. Preserve approved snapshots and historical corrections. AI assists wording through reviewable proposals; it never silently changes records or approves an edition.
 
 ## Review contract
 
-Test: locate the top blocker, capture work, hand over ownership, record failed UAT, resolve/rework, record client response, confirm a stream, prepare/approve/present a brief. Evaluate identity, hierarchy, clarity, working density, interaction state, and accessibility separately. A different agent reviews the implementation. Do not claim actual user-study results or accessibility certification from this internal evaluation.
+Test: locate the top blocker, distinguish intervention from upcoming work, follow a count into Delivery, inspect linked context, capture work, hand over ownership, record failed UAT, resolve/rework, record client response, confirm a stream, and prepare/approve/present a brief. Evaluate identity, hierarchy, clarity, working density, interaction state, and accessibility separately. Include a synthetic zero-intervention state and mobile/keyboard review. A different agent reviews the implementation. Do not claim actual user-study results, accessibility certification, or browser checks that have not been run.
 
-Reference synthesis and access limitations are in `docs/design/report-source.md`; the visual study is `public/design-study.html`.
+The accepted A/B/C reference, provenance, audited data corrections, and acceptance plan are in [Claude integration](docs/design/CLAUDE-INTEGRATION.md). Earlier research remains in [the source synthesis](docs/design/report-source.md); `public/design-study.html` and the 7 September validation describe the previous design pass, not final validation of this integration.

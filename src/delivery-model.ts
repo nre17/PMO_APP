@@ -1,5 +1,6 @@
 import { GENERAL_STAGES, SOFTWARE_STAGES, type HubState, type Stage, type WorkItem, type WorkflowKind } from '../shared/types';
 import { recordAttention } from '../shared/reporting';
+import { selectOverview } from './overview-model';
 
 export const workflowStages = (kind: WorkflowKind): readonly Stage[] => kind === 'software' ? SOFTWARE_STAGES : GENERAL_STAGES;
 export type DeliverySort = 'attention' | 'due' | 'priority' | 'title';
@@ -8,6 +9,9 @@ export interface DeliveryFilters { query: string; workstream: string; owner: str
 export function selectDeliveryItems(state: HubState, filters: DeliveryFilters, now = new Date()): WorkItem[] {
   const query = filters.query.trim().toLocaleLowerCase();
   const priority = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  const overview = ['intervention', 'due-soon', 'escalation', 'overdue'].includes(filters.status) ? selectOverview(state, now) : undefined;
+  const overviewRows = !overview ? [] : filters.status === 'due-soon' ? overview.dueSoon : filters.status === 'escalation' ? overview.interventions.filter(row => row.flags.escalationDue) : filters.status === 'overdue' ? overview.interventions.filter(row => row.flags.overdue) : overview.interventions;
+  const overviewIds = new Set(overviewRows.map(row => row.item.id));
   const attention = (item: WorkItem) => {
     const flags = recordAttention(item, state.settings, now);
     return flags.escalationDue ? 6 : item.stage !== 'Closed' && item.blocked ? 5 : flags.overdue ? 4 : item.stage === 'Awaiting client acceptance' ? 3 : flags.dueToday ? 2 : flags.dueReminder ? 1 : 0;
@@ -15,7 +19,7 @@ export function selectDeliveryItems(state: HubState, filters: DeliveryFilters, n
   return state.items.filter(item => {
     const owner = state.members.find(member => member.id === item.currentOwnerId)?.name || 'Unassigned';
     const flags = recordAttention(item, state.settings, now);
-    const status = filters.status === 'all' || (filters.status === 'active' && item.stage !== 'Closed') || (filters.status === 'blocked' && item.stage !== 'Closed' && item.blocked) || (filters.status === 'client' && item.stage === 'Awaiting client acceptance') || (filters.status === 'closed' && item.stage === 'Closed') || (filters.status === 'attention' && item.stage !== 'Closed' && (item.blocked || flags.overdue || flags.escalationDue || flags.dueToday || flags.dueReminder || item.stage === 'Awaiting client acceptance'));
+    const status = overviewIds.has(item.id) || filters.status === 'all' || (filters.status === 'active' && item.stage !== 'Closed') || (filters.status === 'blocked' && item.stage !== 'Closed' && item.blocked) || (filters.status === 'client' && item.stage === 'Awaiting client acceptance') || (filters.status === 'closed' && item.stage === 'Closed') || (filters.status === 'attention' && item.stage !== 'Closed' && (item.blocked || flags.overdue || flags.escalationDue || flags.dueToday || flags.dueReminder || item.stage === 'Awaiting client acceptance'));
     return status && (filters.workstream === 'all' || item.workstreamId === filters.workstream) && (filters.owner === 'all' || (filters.owner === 'unassigned' ? !item.currentOwnerId : item.currentOwnerId === filters.owner)) && (filters.kind === 'all' || item.kind === filters.kind) && (filters.stage === 'all' || item.stage === filters.stage) && (!query || [item.title, item.nextAction, item.blockReason, item.id, owner].join(' ').toLocaleLowerCase().includes(query));
   }).sort((a,b) => {
     const due = (a.dueDate || '9999').localeCompare(b.dueDate || '9999');

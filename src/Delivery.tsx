@@ -15,8 +15,8 @@ function canEditItem(state:HubState,user:Member,item:WorkItem){
   const creator=item.stage==='Backlog'&&state.events.some(event=>event.entityId===item.id&&event.action==='created'&&event.actorId===user.id);
   return canEdit(user)&&item.stage!=='Closed'&&(canEditOwnedRecord(state,user,item)||item.currentOwnerId===user.id||creator);
 }
-type DeliveryProps=PageProps&{initialFilter:string;initialStage?:Stage;initialKind?:WorkflowKind;search:string;setSearch:(s:string)=>void;workstream:string;setWorkstream:(s:string)=>void;createItem:()=>void};
-const stateLabels:Record<string,string>={all:'All work',active:'Active work',blocked:'Blocked work',attention:'Needs attention',client:'Awaiting client acceptance',closed:'Closed work'};
+type DeliveryProps=PageProps&{initialFilter:string;initialTab?:'work'|'milestones';initialStage?:Stage;initialKind?:WorkflowKind;search:string;setSearch:(s:string)=>void;workstream:string;setWorkstream:(s:string)=>void;createItem:()=>void};
+const stateLabels:Record<string,string>={all:'All work',active:'Active work',intervention:'Needs intervention',escalation:'Escalation due','due-soon':'Additional due soon',overdue:'Past target',blocked:'Blocked work',attention:'All attention items',client:'Awaiting client acceptance',closed:'Closed work'};
 
 export function Delivery(props:DeliveryProps){
   const {state,user,openItem,search,setSearch,workstream,setWorkstream,createItem}=props;
@@ -24,10 +24,10 @@ export function Delivery(props:DeliveryProps){
   const [kind,setKind]=useState<WorkflowKind|'all'>(props.initialKind||'all');
   const [stage,setStage]=useState<Stage|'all'>(props.initialStage||'all');
   const [owner,setOwner]=useState('all');const [sort,setSort]=useState<DeliverySort>('attention');
-  const [view,setView]=useState<'list'|'board'>('list');const [tab,setTab]=useState('work');
+  const [view,setView]=useState<'list'|'board'>('list');const [tab,setTab]=useState<string>(props.initialTab||'work');
   const [filtersOpen,setFiltersOpen]=useState(false);const [mobileStage,setMobileStage]=useState<Stage>(props.initialStage||'Backlog');
   const [importOpen,setImportOpen]=useState(false);const [milestone,setMilestone]=useState<Milestone>();const [newMilestone,setNewMilestone]=useState(false);const [deliverable,setDeliverable]=useState<Deliverable|'new'>();
-  useEffect(()=>{setStatus(props.initialFilter);setStage(props.initialStage||'all');setKind(props.initialKind||'all');setMobileStage(props.initialStage||'Backlog');setView('list');setTab('work');},[props.initialFilter,props.initialStage,props.initialKind]);
+  useEffect(()=>{setStatus(props.initialFilter);setStage(props.initialStage||'all');setKind(props.initialKind||'all');setMobileStage(props.initialStage||'Backlog');setView('list');setTab(props.initialTab||'work');},[props.initialFilter,props.initialStage,props.initialKind,props.initialTab]);
   const filtered=useMemo(()=>selectDeliveryItems(state,{query:search,workstream,owner,status,kind,stage,sort}),[state,search,workstream,owner,status,kind,stage,sort]);
   useEffect(()=>{if(filtered.length&&!filtered.some(item=>item.stage===mobileStage))setMobileStage(filtered[0].stage);},[filtered]);
   const boardKind:WorkflowKind=kind==='general'?'general':'software';const boardStages=workflowStages(boardKind);
