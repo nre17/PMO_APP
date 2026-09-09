@@ -7,7 +7,7 @@ import { createSeedState } from './seed.js';
 import { createPortfolioState } from './portfolio-seed.js';
 import { createShowcaseState } from './showcase-seed.js';
 import { seedConfiguration, type SeedProfile } from './seed-config.js';
-import { HttpError, audit, authorize, checkVersion, collection, createRecord, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, sourceVersions, streamConfirmed, textField, touch, transition } from './domain.js';
+import { HttpError, audit, authorize, checkVersion, collection, createRecord, day, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, schemas, sourceVersions, streamConfirmed, textField, touch, transition, validateReferences } from './domain.js';
 import { aiAvailable, draftReport, extractNotes } from './ai.js';
 import { exportCsv, exportWorkbook, importFingerprint, previewImport } from './imports.js';
 import type { HubState, ImportPreview, Member, Report, Submission } from '../shared/types.js';
@@ -87,6 +87,47 @@ export async function createApp(options: AppOptions = {}) {
   app.post<{ Params: { collection: string } }>('/api/records/:collection', request => mutate(request, (state, user, stamp) => createRecord(state, user, collection(request.params.collection), request.body, stamp)));
   app.patch<{ Params: { collection: string; id: string } }>('/api/records/:collection/:id', request => mutate(request, (state, user, stamp) => patchRecord(state, user, collection(request.params.collection), request.params.id, request.body, stamp)));
   app.post<{ Params: { id: string } }>('/api/items/:id/transition', request => mutate(request, (state, user, stamp) => transition(state, user, request.params.id, request.body, stamp)));
+
+  app.post<{ Params: { id: string } }>('/api/items/:id/escalate', request => mutate(request, (state, user, stamp) => {
+    const item = getRecord(state.items, request.params.id);
+    authorize(state, user, 'items', item);
+    const input = z.object({
+      version: z.number().int().positive(), title: z.string().trim().min(1).max(240),
+      decisionNeeded: textField.refine(Boolean, 'Describe the decision or help needed.'),
+      ownerId: z.string().trim().min(1).max(150), dueDate: day,
+      priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
+      milestoneIds: z.array(z.string().trim().min(1).max(150)).max(50).refine(values => new Set(values).size === values.length, 'Choose each milestone once.').default([]),
+    }).strict().parse(request.body);
+    checkVersion(item, input.version);
+    requireThat(item.stage !== 'Closed', 'Reopen closed work before raising an escalation.', 409);
+    const owner = state.members.find(member => member.id === input.ownerId);
+    requireThat(owner && owner.role !== 'executive', 'Choose an existing delivery team member to own the escalation.');
+    const escalatedSnapshot = (value: unknown) => Boolean(value && typeof value === 'object' && 'status' in value && value.status === 'escalated');
+    const raisedRegisterIds = new Set(state.events.filter(event => event.entityType === 'registers' && (
+      event.action === 'escalated' || escalatedSnapshot(event.before) || escalatedSnapshot(event.after)
+    )).map(event => event.entityId));
+    const previous = state.registers.find(register => register.status !== 'resolved' && register.relatedItemIds.includes(item.id) && (
+      register.status === 'escalated' || raisedRegisterIds.has(register.id)
+    ));
+    requireThat(!previous, 'Open existing escalation before creating another for this work item.', 409);
+    // Item authority is sufficient here, including an assigned owner without
+    // broad workstream membership. No persistent permissions are added.
+    const register = {
+      ...schemas.registers.parse({
+        type: 'issue', title: input.title, detail: input.decisionNeeded, nextAction: input.decisionNeeded,
+        workstreamId: item.workstreamId, relatedItemIds: [item.id], milestoneIds: input.milestoneIds,
+        ownerId: input.ownerId, dueDate: input.dueDate, priority: input.priority,
+        probability: 'Medium', status: 'escalated', mitigation: '', impact: '', clientVisible: false, clientSummary: '',
+      }),
+      id: id(), version: 1, updatedAt: stamp,
+    };
+    validateReferences(state, 'registers', register);
+    const before = structuredClone(item);
+    state.registers.push(register); touch(item, stamp);
+    audit(state, user, 'registers', register.id, 'escalated', input.decisionNeeded, null, register, stamp);
+    audit(state, user, 'items', item.id, 'escalated', `Raised escalation: ${register.title} (register ${register.id}).`, before, item, stamp);
+    return { register, item };
+  }));
 
   app.post<{ Params: { id: string } }>('/api/items/:id/tests', request => mutate(request, (state, user, stamp) => {
     delivery(user);

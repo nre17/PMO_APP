@@ -57,7 +57,7 @@ export function ReportPresentation({ report }: { report: Report }) {
 
 type ConfirmationDraft = Pick<Submission, 'workstreamId' | 'completed' | 'next' | 'changes' | 'blockers' | 'health' | 'sourceUpdatedAt'>;
 
-export function Reports({ state, user, mutate, notify, aiAvailable, initialView = 'current', onCurrentPeriod }: PageProps & { initialView?: 'current' | 'archive'; onCurrentPeriod?:()=>void }) {
+export function Reports({ state, user, mutate, notify, aiAvailable, initialView = 'current', onCurrentPeriod, onViewChange }: PageProps & { initialView?: 'current' | 'archive'; onCurrentPeriod?:()=>void; onViewChange?:(view:'current'|'archive')=>void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<'current' | 'archive'>(initialView);
   const [archiveStatus, setArchiveStatus] = useState<'all' | Report['status']>(initialView === 'archive' ? 'approved' : 'all');
@@ -147,7 +147,7 @@ export function Reports({ state, user, mutate, notify, aiAvailable, initialView 
   return <div className="stack reporting-workspace">
     <div className="page-header">
       <div><h1 className="page-title">{view === 'current' ? 'Weekly report' : archiveStatus === 'approved' ? 'Approved briefs' : 'Previous editions'}</h1><p className="page-subtitle">{view === 'current' ? `Week ending ${formatDate(periodEnd, { day: 'numeric', month: 'long', year: 'numeric' })} · Confirm the position, review the wording, publish a fixed edition.` : archiveStatus === 'approved' ? 'Published delivery positions, preserved exactly as approved.' : 'Saved drafts, approved snapshots, and their corrections.'}</p></div>
-      <button className="button secondary" onClick={() => { if(view==='archive'&&initialView==='archive'&&onCurrentPeriod){onCurrentPeriod();return;} setView(view === 'current' ? 'archive' : 'current'); setArchiveStatus('all'); setSelectedId(null); setStep(null); setError(''); }}>{view === 'current' ? <History size={16} /> : <ArrowLeft size={16} />}{view === 'current' ? 'Previous editions' : 'Current period'}</button>
+      <button className="button secondary" onClick={() => { if(onViewChange){onViewChange(view==='current'?'archive':'current');return;} if(view==='archive'&&initialView==='archive'&&onCurrentPeriod){onCurrentPeriod();return;} setView(view === 'current' ? 'archive' : 'current'); setArchiveStatus('all'); setSelectedId(null); setStep(null); setError(''); }}>{view === 'current' ? <History size={16} /> : <ArrowLeft size={16} />}{view === 'current' ? 'Previous editions' : 'Current period'}</button>
     </div>
 
     {view === 'current' ? <>

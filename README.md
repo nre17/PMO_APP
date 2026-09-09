@@ -10,13 +10,16 @@ The workspace starts with ten confirmed names: Performance Portfolio Intelligenc
 
 - **Use case portfolio:** searchable cards and list, lifecycle filters, editable brief, accountable lead, intended outcome, scope and next gate.
 - **Lifecycle artifacts:** proposal, discovery, design, evaluation and handover records, with owner, phase, recorded status and evidence links. These reuse deliverables, so tasks and milestones link to the same records. Artifact status is a recorded assessment, not a fabricated formal approval.
-- **Delivery overview:** interventions, upcoming work, register follow-ups, milestone variance and weekly confirmations. Selected work shows its next action, both owners and the provenance of linked context.
-- **Delivery:** separate software and general workflows, linked deliverables, testing, evidence, handoffs and client acceptance. A use-case phase does not change a task's workflow stage.
+- **Work:** one destination for the work list, attention queue, personal assignments, milestones and artifacts. Selected work shows its next action, both owners and linked context. The queue focuses on the commitments that need intervention.
+- **Escalations:** raise a linked issue from a work record, name the person taking it, request a decision and set a response target. Track monitoring and resolution in Risks & decisions. Raising an escalation preserves the work's stage and blocker.
+- **Delivery workflows:** separate software and general flows, linked deliverables, testing, evidence, handoffs and client acceptance. A use-case phase does not change a task's workflow stage.
 - **Reporting:** lead confirmation → reviewed draft → approved edition. Client and internal content remain separate; approved editions are immutable snapshots.
 
 The consulting lifecycle is **Shaping → Discovery → Design → Build → Assurance → Release → Adoption**, covering RFP/proposals, prioritisation, current and target state, scope, semantics and architecture, engineering, QA, production and sustained outcomes. Phases can be revisited; the ribbon does not claim a calculated critical path or percentage complete.
 
 ## Run locally
+
+On Windows, double-click **Open PMO.cmd** for the project or **Open Demo.cmd** for the populated rehearsal. These launch the full workspace in your default browser and keep its server running in the background. See [opening the hub](docs/OPENING.md) for setup and troubleshooting.
 
 Use Node.js 24 and pnpm:
 
@@ -62,7 +65,7 @@ PGlite supplies local PostgreSQL storage. Restarts preserve edits and dates. Own
 
 ## Present the full demonstration
 
-Run `pnpm showcase` to open a populated, explicitly labelled demonstration on `http://127.0.0.1:4311`. It can run alongside the sourced project on port 4310. The launcher selects `.data/showcase` and overrides any external database setting for that process. `pnpm showcase --production` serves compiled assets after `pnpm build`.
+Double-click **Open Demo.cmd**, or run `pnpm showcase` and open `http://127.0.0.1:4311`, for the populated, explicitly labelled demonstration. It can run alongside the sourced project on port 4310. The launcher selects `.data/showcase` and overrides any external database setting for that process. `pnpm showcase --production` serves compiled assets after `pnpm build`.
 
 The ten use cases include illustrative discovery, architecture, engineering, evaluation, UAT, release and adoption work; connected milestones and RAID records; meetings; confirmations; and report editions. The **Demo guide** walks through the real controls. Synthetic roles, tests and approvals demonstrate behaviour without representing project commitments. Approved presentation views retain the demonstration label. Ordinary restart preserves the rehearsal; the [showcase walkthrough](docs/SHOWCASE.md) includes a safe reset and a suggested presentation sequence.
 

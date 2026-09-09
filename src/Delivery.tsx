@@ -1,7 +1,8 @@
 import SourceEvidence, { SourceStatus } from './SourceEvidence';
+import EscalateWork, { EscalationSummary } from './EscalateWork';
 import { useState, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import { Search, Plus, Upload, Download, LayoutList, Columns3, ArrowUpRight, ArrowRight, ArrowLeft, CheckCircle2, Circle, AlertTriangle, Link2, Pencil, RotateCcw, ShieldCheck, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
-import { type PageProps, type WorkItem, type Stage, type WorkflowKind, type TestResult, type ImportPreview, type Milestone, type Deliverable, type HubState, type Member } from '../shared/types';
+import { type PageProps, type WorkItem, type Stage, type WorkflowKind, type TestResult, type ImportPreview, type Milestone, type Deliverable, type HubState, type Member, type Register } from '../shared/types';
 import { Avatar, Badge, Empty, Field, Modal, SafeLink, canEdit, formatDate, memberName } from './ui';
 import { recordAttention } from '../shared/reporting';
 import { workflowStages, selectDeliveryItems, deliveryPrerequisites, handoffLabel, itemStageLabel, type DeliverySort } from './delivery-model';
@@ -16,8 +17,8 @@ function canEditItem(state:HubState,user:Member,item:WorkItem){
   const creator=item.stage==='Backlog'&&state.events.some(event=>event.entityId===item.id&&event.action==='created'&&event.actorId===user.id);
   return canEdit(user)&&item.stage!=='Closed'&&(canEditOwnedRecord(state,user,item)||item.currentOwnerId===user.id||creator);
 }
-type DeliveryProps=PageProps&{initialFilter:string;initialTab?:'work'|'milestones';initialStage?:Stage;initialKind?:WorkflowKind;search:string;setSearch:(s:string)=>void;workstream:string;setWorkstream:(s:string)=>void;createItem:()=>void};
-const stateLabels:Record<string,string>={all:'All work',active:'Active work',intervention:'Needs intervention',escalation:'Escalation due','due-soon':'Additional due soon',overdue:'Past target',blocked:'Blocked work',attention:'All attention items',client:'Awaiting client acceptance',closed:'Closed work'};
+type DeliveryProps=PageProps&{initialFilter:string;initialTab?:'work'|'milestones'|'deliverables';embedded?:boolean;initialStage?:Stage;initialKind?:WorkflowKind;search:string;setSearch:(s:string)=>void;workstream:string;setWorkstream:(s:string)=>void;createItem:()=>void};
+const stateLabels:Record<string,string>={all:'All work',active:'Active work',intervention:'Needs intervention',escalation:'Escalation threshold reached','due-soon':'Additional due soon',overdue:'Past target',blocked:'Blocked work',attention:'All attention items',client:'Awaiting client acceptance',closed:'Closed work'};
 
 export function Delivery(props:DeliveryProps){
   const {state,user,openItem,search,setSearch,workstream,setWorkstream,createItem}=props;
@@ -39,9 +40,10 @@ export function Delivery(props:DeliveryProps){
   function chooseView(value:'list'|'board'){if(value==='board'&&kind==='all'){setKind('software');setStage('all');setMobileStage('Backlog');}setView(value);}
   function itemDate(item:WorkItem){const attention=recordAttention(item,state.settings);return <span className={'desk-date '+(attention.overdue?'is-overdue':'')}><strong>{item.dueDate?formatDate(item.dueDate):'Not set'}</strong>{attention.overdue?<small>Overdue</small>:attention.dueToday&&<small>Due today</small>}</span>;}
   function ownerCell(item:WorkItem){return <span className="desk-person"><Avatar member={state.members.find(m=>m.id===item.currentOwnerId)} size={28}/><span>{item.currentOwnerId?memberName(state,item.currentOwnerId):'Unassigned'}</span></span>;}
+  const deliveryActions=<div className="desk-header-actions">{isPMO(user)&&<details className="desk-export-menu"><summary className="button secondary"><Download size={16}/>Import / export<ChevronDown size={14}/></summary><div><button className="button ghost" onClick={()=>setImportOpen(true)}><Upload size={16}/>Import a backlog</button><a className="button ghost" href="/api/export?format=xlsx" download>Download workbook</a><a className="button ghost" href="/api/export?format=csv" download>Download work as CSV</a></div></details>}{canEdit(user)&&<button className="button primary" onClick={createItem}><Plus size={17}/>Add work</button>}</div>;
   return <div className="delivery-desk">
-    <header className="page-header"><div><h1 className="page-title">Delivery</h1><p className="page-subtitle">Clear next steps. Visible handovers. A complete delivery record.</p></div><div className="desk-header-actions">{isPMO(user)&&<details className="desk-export-menu"><summary className="button secondary"><Download size={16}/>Import / export<ChevronDown size={14}/></summary><div><button className="button ghost" onClick={()=>setImportOpen(true)}><Upload size={16}/>Import a backlog</button><a className="button ghost" href="/api/export?format=xlsx" download>Download workbook</a><a className="button ghost" href="/api/export?format=csv" download>Download work as CSV</a></div></details>}{canEdit(user)&&<button className="button primary" onClick={createItem}><Plus size={17}/>Add work</button>}</div></header>
-    <nav className="desk-section-tabs" aria-label="Delivery sections">{[['work','Work items',state.items.length],['milestones','Milestones',state.milestones.length],['deliverables','Deliverables',state.deliverables.length]].map(([value,label,count])=><button key={value} className={tab===value?'active':''} aria-current={tab===value?'page':undefined} onClick={()=>setTab(String(value))}>{label}<span>{count}</span></button>)}</nav>
+    {!props.embedded?<header className="page-header"><div><h1 className="page-title">Delivery</h1><p className="page-subtitle">Clear next steps. Visible handovers. A complete delivery record.</p></div>{deliveryActions}</header>:tab==='work'&&<div className="desk-embedded-actions">{deliveryActions}</div>}
+    {!props.embedded&&<nav className="desk-section-tabs" aria-label="Delivery sections">{[['work','Work items',state.items.length],['milestones','Milestones',state.milestones.length],['deliverables','Deliverables',state.deliverables.length]].map(([value,label,count])=><button key={value} className={tab===value?'active':''} aria-current={tab===value?'page':undefined} onClick={()=>setTab(String(value))}>{label}<span>{count}</span></button>)}</nav>}
     {tab==='work'&&<>
       <section className="desk-controls" aria-label="Find delivery work">
         <div className="desk-search-row"><div className="search-input"><Search size={18}/><input aria-label="Search delivery work" placeholder="Find work, a next action, or an owner…" value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button className="icon-button" onClick={()=>setSearch('')} aria-label="Clear search"><X size={16}/></button>}</div><button className="button secondary desk-filter-toggle" aria-expanded={filtersOpen} aria-controls="delivery-filters" onClick={()=>setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={16}/>Filters</button><div className="desk-view-switch" aria-label="Display work"><button aria-pressed={view==='list'} className={view==='list'?'active':''} onClick={()=>chooseView('list')}><LayoutList size={17}/>List</button><button aria-pressed={view==='board'} className={view==='board'?'active':''} onClick={()=>chooseView('board')}><Columns3 size={17}/>Board</button></div></div>
@@ -60,7 +62,7 @@ export function Delivery(props:DeliveryProps){
   </div>;
 }
 
-type ItemContext='none'|'handoff'|'test'|'resolve'|'rework'|'client'|'edit';
+type ItemContext='none'|'handoff'|'test'|'resolve'|'rework'|'client'|'edit'|'escalate';
 export function ItemDetail({item,onClose,...props}:PageProps&{item:WorkItem;onClose:()=>void}){
   const {state,user,mutate,notify}=props;
   const [tab,setTab]=useState<'summary'|'checks'|'history'>('summary');const [context,setContext]=useState<ItemContext>('none');
@@ -69,6 +71,7 @@ export function ItemDetail({item,onClose,...props}:PageProps&{item:WorkItem;onCl
   const [nextOwner,setNextOwner]=useState(item.currentOwnerId);const [evidence,setEvidence]=useState('');const [notes,setNotes]=useState('');
   const [testResult,setTestResult]=useState<'pass'|'fail'>('pass');const [blocking,setBlocking]=useState(true);const [resolveId,setResolveId]=useState('');
   const [clientDecision,setClientDecision]=useState<'accepted'|'rejected'>('accepted');
+  const [raisedEscalation,setRaisedEscalation]=useState<Register>();
   const contextHeading=useRef<HTMLHeadingElement>(null);const checksSection=useRef<HTMLElement>(null);
   const editable=canEdit(user);const metadataEditable=canEditItem(state,user,item);
   const tests=state.tests.filter(t=>t.itemId===item.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
@@ -83,10 +86,11 @@ export function ItemDetail({item,onClose,...props}:PageProps&{item:WorkItem;onCl
   const priorUnresolved=previousTests.filter(t=>t.result==='fail'&&t.blocking&&!t.resolvedAt);
   const selectedFinding=tests.find(t=>t.id===resolveId);
   const attention=recordAttention(item,state.settings);
-  useEffect(()=>{setContext('none');setTab('summary');setError('');setShowStages(false);},[item.id]);
+  useEffect(()=>{setContext('none');setTab('summary');setError('');setShowStages(false);setRaisedEscalation(undefined);},[item.id]);
   useEffect(()=>{if(context!=='none'&&context!=='edit'){contextHeading.current?.focus({preventScroll:true});contextHeading.current?.scrollIntoView({block:'nearest'});}},[context,resolveId]);
   function showChecks(){setTab('checks');requestAnimationFrame(()=>checksSection.current?.scrollIntoView({block:'nearest'}));}
   function begin(value:ItemContext,findingId=''){
+    if(busy)return;
     setOperation({version:item.version,cycle:item.cycle,stage:item.stage});setError('');setNotes('');setEvidence('');setResolveId(findingId);setTestResult('pass');setBlocking(true);setClientDecision('accepted');
     setNextOwner(value==='rework'||value==='client'?item.ownerId:item.currentOwnerId);setContext(value);
     if(value==='test'||value==='resolve')setTab('checks');
@@ -104,11 +108,12 @@ export function ItemDetail({item,onClose,...props}:PageProps&{item:WorkItem;onCl
   function renderTest(t:TestResult){
     return <article className="desk-check-record" key={t.id}><header><Badge tone={t.result==='pass'?'green':t.resolvedAt?'neutral':t.blocking?'red':'amber'}>{t.result==='pass'?'Passed':t.resolvedAt?'Resolved':t.blocking?'Blocking finding':'Finding'}</Badge><span>{t.stage} · Cycle {t.cycle}</span><time dateTime={t.createdAt}>{formatDate(t.createdAt)}</time></header><p>{t.notes}</p><div className="desk-evidence"><Link2 size={15}/><SafeLink href={t.evidence}/></div>{t.resolution&&<div className="desk-resolution"><strong>Resolution</strong><p>{t.resolution}</p><span>{memberName(state,t.resolvedBy||'')} · {formatDate(t.resolvedAt)}</span></div>}<footer><span>Recorded by {memberName(state,t.authorId)}</span>{editable&&t.result==='fail'&&!t.resolvedAt&&<button className="button secondary small" onClick={()=>begin('resolve',t.id)}>Record resolution</button>}</footer></article>;
   }
-  const contextTitles:Record<ItemContext,string>={none:'',handoff:handoffLabel(item),test:canPass?'Record a stage check':'Record a finding',resolve:'Resolve a finding',rework:'Start a rework cycle',client:'Record the client response',edit:'Edit work details'};
-  return <Modal variant="drawer" className="desk-item-drawer" title={item.title} description={item.id+' · Delivery cycle '+item.cycle+' · '+(state.workstreams.find(w=>w.id===item.workstreamId)?.name||'')} onClose={onClose}>
+  const contextTitles:Record<ItemContext,string>={none:'',handoff:handoffLabel(item),test:canPass?'Record a stage check':'Record a finding',resolve:'Resolve a finding',rework:'Start a rework cycle',client:'Record the client response',edit:'Edit work details',escalate:'Raise an escalation'};
+  return <Modal variant="drawer" className="desk-item-drawer" title={item.title} description={item.id+' · Delivery cycle '+item.cycle+' · '+(state.workstreams.find(w=>w.id===item.workstreamId)?.name||'')} onClose={()=>{if(!busy)onClose();}}>
     <SourceEvidence state={state} itemId={item.id} onNavigate={onClose}/><div className="desk-item-state"><Badge tone={item.stage==='Closed'?'green':item.stage==='Awaiting client acceptance'?'blue':'neutral'}>{itemStageLabel(item)}</Badge>{item.blocked&&item.stage!=='Closed'&&<Badge tone="amber">Blocked</Badge>}<span className={'desk-priority priority-'+item.priority.toLowerCase()}>{item.priority} priority</span><button className="button ghost small" aria-expanded={showStages} onClick={()=>setShowStages(!showStages)}>{showStages?'Hide workflow':'View workflow'}<ChevronDown size={14}/></button></div>
     {showStages&&<ol className="desk-stage-trail" aria-label="Delivery workflow">{stages.map((s,index)=><li key={s} className={index===currentIndex?'current':index<currentIndex?'previous':''} aria-current={index===currentIndex?'step':undefined}><span>{index+1}</span>{s}</li>)}</ol>}
     <dl className="desk-item-ownership"><div><dt>Accountable owner</dt><dd><Avatar member={state.members.find(m=>m.id===item.ownerId)} size={27}/>{memberName(state,item.ownerId)}</dd></div><div><dt>Next action owner</dt><dd><Avatar member={state.members.find(m=>m.id===item.currentOwnerId)} size={27}/>{memberName(state,item.currentOwnerId)}</dd></div><div><dt>Target date</dt><dd className={attention.overdue?'is-overdue':''}>{item.dueDate?formatDate(item.dueDate):'Not set'}{attention.overdue&&<small>Overdue</small>}</dd>{item.baselineDate&&item.baselineDate!==item.dueDate&&<small>Baseline {formatDate(item.baselineDate)}</small>}</div></dl>
+    {context==='none'&&<EscalationSummary state={state} item={item} allowed={metadataEditable} recent={raisedEscalation} onEscalate={()=>begin('escalate')} onOpenRegister={props.openRegister}/>}
     {context==='none'&&<section className={'desk-next-step '+(item.stage==='Closed'?'is-complete':'')}>
       {item.stage==='Closed'?<><div className="desk-next-heading"><CheckCircle2 size={23}/><div><h2>{item.importedFrom&&!item.closedAt?'Imported closed record':'Delivery accepted'}</h2><p>{item.importedFrom&&!item.closedAt?'The source backlog marked this work closed. No acceptance date or testing evidence was invented.':'Closed '+formatDate(item.closedAt)+'. The delivery history and acceptance evidence remain available.'}</p></div></div>{editable&&<button className="button secondary" onClick={()=>begin('rework')}><RotateCcw size={15}/>Reopen for rework</button>}</>:
       item.stage==='Awaiting client acceptance'?<><div className="desk-next-heading"><ShieldCheck size={23}/><div><span className="desk-small-label">Next step</span><h2>Record the client response</h2><p>Client acceptance is the final delivery step. Record the client’s actual response and evidence before closing this work.</p></div></div>{(item.blocked||requirements.unresolved.length>0)&&<div className="notice notice-warning">Acceptance is paused until the delivery blocker and all blocking findings are resolved. A rejected response can still return the work for rework.</div>}{editable&&<div className="desk-item-actions"><button className="button primary" onClick={()=>begin('client')}>Record client response<ArrowRight size={16}/></button><button className="button secondary" onClick={showChecks}>Checks & evidence</button>{metadataEditable&&<button className="button ghost" onClick={()=>begin('edit')}>Edit details</button>}</div>}</>:
@@ -116,7 +121,7 @@ export function ItemDetail({item,onClose,...props}:PageProps&{item:WorkItem;onCl
       {!editable&&item.stage!=='Closed'&&<p className="desk-help">A delivery team member can record the next handover.</p>}
     </section>}
     {context!=='none'&&<section className="desk-context-form" aria-label={contextTitles[context]}><div className="desk-context-heading"><button type="button" className="button ghost small" disabled={busy} onClick={()=>{setContext('none');setError('');}}><ArrowLeft size={15}/>Back to next step</button><h2 ref={contextHeading} tabIndex={-1}>{contextTitles[context]}</h2></div>
-      {context==='edit'?<ItemForm {...props} item={item} embedded onClose={()=>setContext('none')}/>:<form onSubmit={event=>{
+      {context==='edit'?<ItemForm {...props} item={item} embedded onClose={()=>setContext('none')}/>:context==='escalate'?<EscalateWork {...props} item={item} allowed={metadataEditable} onClose={()=>setContext('none')} onBusyChange={setBusy} onRaised={record=>{setRaisedEscalation(record);setContext('none');}}/>:<form onSubmit={event=>{
         event.preventDefault();if(busy||stale)return;
         if(context==='handoff')run('/api/items/'+item.id+'/transition',{version:operation.version,stage:requirements.nextStage,currentOwnerId:nextOwner,evidence},'Moved to '+requirements.nextStage+'. '+memberName(state,nextOwner)+' acts next.');
         if(context==='test')run('/api/items/'+item.id+'/tests',{version:operation.version,cycle:operation.cycle,stage:operation.stage,result:effectiveResult,blocking:effectiveResult==='fail'&&blocking,notes,evidence},'Check recorded against delivery cycle '+operation.cycle+'.');

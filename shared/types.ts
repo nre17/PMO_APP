@@ -46,4 +46,4 @@ export interface ImportRow { line: number; item: Partial<WorkItem>; errors: stri
 export interface ImportPreview { id: string; headers: string[]; mapping: Record<string, string>; rows: ImportRow[]; validCount: number; invalidCount: number; duplicateCount: number }
 export interface AIProposal { type: 'action' | 'issue' | 'decision'; title: string; detail: string; ownerId: string | null; dueDate: string | null; sourceQuote: string; workstreamId?: string }
 export type Mutate = (path: string, body?: unknown, method?: string) => Promise<any>;
-export interface PageProps { state: HubState; user: Member; mutate: Mutate; notify: (message: string, error?: boolean) => void; openItem: (id: string) => void; aiAvailable: boolean }
+export interface PageProps { state: HubState; user: Member; mutate: Mutate; notify: (message: string, error?: boolean) => void; openItem: (id: string) => void; openRegister?: (id: string) => void; aiAvailable: boolean }

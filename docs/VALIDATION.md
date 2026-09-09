@@ -4,9 +4,11 @@ This index separates current automated coverage from dated historical browser ev
 
 ## Current coverage
 
+The navigation and escalation revision passed **92 of 92 tests** and a production build on 9 September. New tests cover legacy-route compatibility, Work/report URL parsing, escalation permissions, concurrent/stale writes, duplicate prevention, legacy status history, resolution and re-escalation, source freshness, and preservation of work stages. Windows launcher checks covered detached startup, a 50-second soft timeout with reuse of the same slow-starting process, concurrent launch rejection, wrong-store refusal and environment preservation.
+
 The active suite includes backend storage and permission invariants; exact reporting cutoffs and source freshness; delivery/overview filters and handover prerequisites; portfolio lifecycle, profile separation, artifact associations and permission boundaries. Client-report tests check internal-content exclusion and immutable approved snapshots. Import tests use real CSV/XLSX content and preserve stages without manufacturing completion evidence.
 
-The portfolio revision passed **62 of 62 tests** on 8 September after the dependency updates. The reviewed-intake revision subsequently passed a full **74 of 74** run, followed by **17 of 17** focused intake tests after five additional regressions were added. The current suite contains 79 tests; GitHub Actions runs the complete suite and build on Windows and Linux for each revision.
+The portfolio revision passed **62 of 62 tests** on 8 September after the dependency updates. The reviewed-intake revision subsequently passed a full **74 of 74** run, followed by **17 of 17** focused intake tests after five additional regressions were added, bringing that revision to 79 tests. GitHub Actions runs the complete suite and build on Windows and Linux for each revision.
 
 The intake tests use synthetic fixtures. They cover source dispositions, stable row identity, repeat imports, preservation of human edits, source revisions, pinned evidence, historical-source restrictions, permissions, validation, explicit general actions, storage defaults, persistence and rollback. The final local production build passed after the source screens were integrated.
 
@@ -17,6 +19,8 @@ The [8 September repository audit](REPOSITORY-REVIEW-2026-09-08.md) records corr
 Dependency maintenance was followed by a successful build, zero known production-dependency advisories from `pnpm audit --prod --json`, an XLSX conditional-formatting round-trip, and static asset/deep-link/API-fallback checks. The audit document records the exact resolved versions and compatibility evidence.
 
 ## Current browser observations
+
+On 9 September, the in-app browser verified the five primary destinations and all five Work views at laptop dimensions. A synthetic escalation was raised from a work item, opened as a linked register, and resolved with a response; the work remained in Development. A saved approved report opened directly before a showcase browser session existed. Report history gained its own URL and was checked after reload. Chrome was not connected to browser automation, so these observations do not claim a Chrome-specific run. Both local compiled servers were restarted after the final build and served its JavaScript assets successfully.
 
 The populated consulting showcase adds four integration tests. The full local suite passed **83 of 83** after its integration. The new coverage exercises discovery review, gated UAT/release and rejection into a new cycle, explicit client acceptance, meeting capture, use-case confirmations, report approval and immutable labelled presentation, and storage/profile separation. The dedicated launcher was checked to retain its local-store and empty external-database overrides after environment loading. The final ready-to-present fixture edition is also included in the showcase tests.
 
