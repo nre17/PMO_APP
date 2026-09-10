@@ -3,14 +3,15 @@ import { createApp } from './app.js';
 
 try { process.loadEnvFile(); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
 const host = process.env.HOST ?? '127.0.0.1';
-if (!['127.0.0.1', 'localhost', '::1'].includes(host)) throw new Error('The synthetic demonstrator can only bind to localhost. Corporate identity is required before shared hosting.');
+if (!['127.0.0.1', 'localhost', '::1'].includes(host)) throw new Error('The local preview can only bind to localhost. Corporate identity is required before shared hosting.');
 const app = await createApp({ logger: true });
 let vite: import('vite').ViteDevServer | undefined;
 if (process.argv.includes('--production')) {
   const staticPlugin = await import('@fastify/static');
   await app.register(staticPlugin.default, { root: path.resolve('dist/client'), wildcard: false });
   app.setNotFoundHandler((request, reply) => {
-    if (request.url.startsWith('/api/')) return reply.code(404).send({ error: 'Endpoint not found.' });
+    const pathname = request.url.split('?')[0];
+    if (pathname.startsWith('/api/') || pathname.startsWith('/assets/') || path.extname(pathname)) return reply.code(404).send({ error: 'Resource not found.' });
     return reply.sendFile('index.html');
   });
 } else {

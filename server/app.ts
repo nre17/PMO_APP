@@ -4,22 +4,27 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { Store } from './db.js';
 import { createSeedState } from './seed.js';
-import { HttpError, audit, authorize, checkVersion, collection, createRecord, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, sourceVersions, streamConfirmed, textField, touch, transition } from './domain.js';
+import { createPortfolioState } from './portfolio-seed.js';
+import { createShowcaseState } from './showcase-seed.js';
+import { seedConfiguration, type SeedProfile } from './seed-config.js';
+import { HttpError, audit, authorize, checkVersion, collection, createRecord, day, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, schemas, sourceVersions, streamConfirmed, textField, touch, transition, validateReferences } from './domain.js';
 import { aiAvailable, draftReport, extractNotes } from './ai.js';
 import { exportCsv, exportWorkbook, importFingerprint, previewImport } from './imports.js';
-import type { HubState, ImportPreview, Member, Report, Submission } from '../shared/types.js';
+import type { HubState, ImportPreview, Member } from '../shared/types.js';
 
-export type AppOptions = { dataDir?: string; state?: HubState; testMode?: boolean; now?: () => Date; databaseUrl?: string; logger?: boolean };
+export type AppOptions = { dataDir?: string; seedProfile?: SeedProfile; state?: HubState; testMode?: boolean; now?: () => Date; databaseUrl?: string; logger?: boolean };
 export async function createApp(options: AppOptions = {}) {
   const now = () => (options.now?.() ?? new Date()).toISOString();
   requireThat((process.env.APP_MODE ?? 'demo') === 'demo', 'Corporate identity is not configured. Non-demo mode is disabled.', 503);
-  const store = await Store.open({ dataDir: options.dataDir ?? process.env.DATA_DIR, databaseUrl: options.testMode ? options.databaseUrl : options.databaseUrl ?? process.env.DATABASE_URL, initialState: options.state ?? createSeedState(new Date(now())) });
+  const configuration = seedConfiguration(options);
+  const initialState = options.state ?? (configuration.seedProfile === 'showcase' ? createShowcaseState(new Date(now())) : configuration.seedProfile === 'demo' ? createSeedState(new Date(now())) : createPortfolioState(new Date(now())));
+  const store = await Store.open({ dataDir: configuration.dataDir, databaseUrl: options.testMode ? options.databaseUrl : options.databaseUrl ?? process.env.DATABASE_URL, initialState });
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 8 * 1024 * 1024 });
   await app.register(cookie);
   const sessions = new Map<string, { userId: string; expires: number }>();
   const previews = new Map<string, { preview: ImportPreview; userId: string; expires: number }>();
   const aiRequests = new Map<string, number[]>();
-  const sessionCookie = 'pmo_demo_session';
+  const sessionCookie = configuration.seedProfile === 'showcase' ? 'pmo_showcase_session' : 'pmo_demo_session';
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
@@ -28,7 +33,7 @@ export async function createApp(options: AppOptions = {}) {
     reply.header('Cache-Control', 'no-store');
     const host = request.headers.host ?? '';
     const hostname = host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.split(':')[0];
-    requireThat(['localhost', '127.0.0.1', '::1'].includes(hostname), 'This synthetic demonstrator is restricted to localhost.', 403);
+    requireThat(['localhost', '127.0.0.1', '::1'].includes(hostname), 'This local preview is restricted to localhost.', 403);
     const origin = request.headers.origin;
     if (origin) {
       let parsed: URL;
@@ -74,7 +79,7 @@ export async function createApp(options: AppOptions = {}) {
   app.post('/api/demo/persona', async (request, reply) => {
     const state = await store.read(); current(request, state);
     const { userId } = z.object({ userId: z.string() }).parse(request.body);
-    requireThat(state.members.some(m => m.id === userId), 'Unknown fictional persona.');
+    requireThat(state.members.some(m => m.id === userId), 'Unknown local preview role.');
     if (request.cookies[sessionCookie]) sessions.delete(request.cookies[sessionCookie]);
     return { currentUserId: setSession(reply, userId) };
   });
@@ -82,6 +87,47 @@ export async function createApp(options: AppOptions = {}) {
   app.post<{ Params: { collection: string } }>('/api/records/:collection', request => mutate(request, (state, user, stamp) => createRecord(state, user, collection(request.params.collection), request.body, stamp)));
   app.patch<{ Params: { collection: string; id: string } }>('/api/records/:collection/:id', request => mutate(request, (state, user, stamp) => patchRecord(state, user, collection(request.params.collection), request.params.id, request.body, stamp)));
   app.post<{ Params: { id: string } }>('/api/items/:id/transition', request => mutate(request, (state, user, stamp) => transition(state, user, request.params.id, request.body, stamp)));
+
+  app.post<{ Params: { id: string } }>('/api/items/:id/escalate', request => mutate(request, (state, user, stamp) => {
+    const item = getRecord(state.items, request.params.id);
+    authorize(state, user, 'items', item);
+    const input = z.object({
+      version: z.number().int().positive(), title: z.string().trim().min(1).max(240),
+      decisionNeeded: textField.refine(Boolean, 'Describe the decision or help needed.'),
+      ownerId: z.string().trim().min(1).max(150), dueDate: day,
+      priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
+      milestoneIds: z.array(z.string().trim().min(1).max(150)).max(50).refine(values => new Set(values).size === values.length, 'Choose each milestone once.').default([]),
+    }).strict().parse(request.body);
+    checkVersion(item, input.version);
+    requireThat(item.stage !== 'Closed', 'Reopen closed work before raising an escalation.', 409);
+    const owner = state.members.find(member => member.id === input.ownerId);
+    requireThat(owner && owner.role !== 'executive', 'Choose an existing delivery team member to own the escalation.');
+    const escalatedSnapshot = (value: unknown) => Boolean(value && typeof value === 'object' && 'status' in value && value.status === 'escalated');
+    const raisedRegisterIds = new Set(state.events.filter(event => event.entityType === 'registers' && (
+      event.action === 'escalated' || escalatedSnapshot(event.before) || escalatedSnapshot(event.after)
+    )).map(event => event.entityId));
+    const previous = state.registers.find(register => register.status !== 'resolved' && register.relatedItemIds.includes(item.id) && (
+      register.status === 'escalated' || raisedRegisterIds.has(register.id)
+    ));
+    requireThat(!previous, 'Open existing escalation before creating another for this work item.', 409);
+    // Item authority is sufficient here, including an assigned owner without
+    // broad workstream membership. No persistent permissions are added.
+    const register = {
+      ...schemas.registers.parse({
+        type: 'issue', title: input.title, detail: input.decisionNeeded, nextAction: input.decisionNeeded,
+        workstreamId: item.workstreamId, relatedItemIds: [item.id], milestoneIds: input.milestoneIds,
+        ownerId: input.ownerId, dueDate: input.dueDate, priority: input.priority,
+        probability: 'Medium', status: 'escalated', mitigation: '', impact: '', clientVisible: false, clientSummary: '',
+      }),
+      id: id(), version: 1, updatedAt: stamp,
+    };
+    validateReferences(state, 'registers', register);
+    const before = structuredClone(item);
+    state.registers.push(register); touch(item, stamp);
+    audit(state, user, 'registers', register.id, 'escalated', input.decisionNeeded, null, register, stamp);
+    audit(state, user, 'items', item.id, 'escalated', `Raised escalation: ${register.title} (register ${register.id}).`, before, item, stamp);
+    return { register, item };
+  }));
 
   app.post<{ Params: { id: string } }>('/api/items/:id/tests', request => mutate(request, (state, user, stamp) => {
     delivery(user);
@@ -192,13 +238,17 @@ export async function createApp(options: AppOptions = {}) {
     requireThat(report.status === 'approved', 'Only an approved report has a presentation.', 409);
     // Explicit allowlist: no live source records, audit entries, source versions,
     // user contact details, or internal annotations can enter this view.
-    return { id: report.id, title: report.title, audience: report.audience, periodStart: report.periodStart, periodEnd: report.periodEnd, asOf: report.asOf, approvedAt: report.approvedAt, status: report.status, body: report.body };
+    return { id: report.id, title: report.title, audience: report.audience, periodStart: report.periodStart, periodEnd: report.periodEnd, asOf: report.asOf, approvedAt: report.approvedAt, status: report.status, body: report.body, ...(state.settings.demoScenario === 'consulting-lifecycle' ? { demoScenario: state.settings.demoScenario } : {}) };
   });
   app.patch('/api/settings', request => mutate(request, (state, user, stamp) => {
     pmo(user);
     const schema = z.object({ projectName: z.string().trim().min(1).max(150), phaseName: z.string().trim().min(1).max(150), timezone: z.string().refine(v => { try { new Intl.DateTimeFormat('en', { timeZone: v }); return true; } catch { return false; } }, 'Use a valid IANA timezone.'), submissionHour: z.number().int().min(0).max(23), cutoffHour: z.number().int().min(0).max(23), blockedEscalationDays: z.number().int().min(1).max(30), workingDays: z.array(z.number().int().min(0).max(6)).min(1).max(7) });
-    const changes = schema.partial().strict().parse(request.body); const before = structuredClone(state.settings);
+    const { expectedVersion, ...fields } = z.object({ expectedVersion: z.number().int().positive() }).passthrough().parse(request.body);
+    const changes = schema.partial().strict().parse(fields); const before = structuredClone(state.settings);
+    const currentVersion = state.settings.version ?? 1;
+    requireThat(expectedVersion === currentVersion, 'Project settings changed. Refresh and review the latest settings before saving.', 409);
     Object.assign(state.settings, changes); requireThat(state.settings.submissionHour <= state.settings.cutoffHour, 'Submission time must be at or before cutoff.');
+    state.settings.version = currentVersion + 1;
     audit(state, user, 'settings', 'project', 'updated', 'Updated project cadence', before, state.settings, stamp);
     return state.settings;
   }));
@@ -206,7 +256,7 @@ export async function createApp(options: AppOptions = {}) {
   app.post('/api/import/preview', async request => {
     const state = await store.read(), user = current(request, state); pmo(user);
     const body = z.object({ filename: z.string().max(200), content: z.string(), mapping: z.record(z.string(), z.string()).optional() }).parse(request.body);
-    const preview = await previewImport(state, body.filename, body.content, body.mapping, now());
+    const preview = await previewImport(state, body.filename, body.content, body.mapping);
     for (const [key, value] of previews) if (value.expires < Date.now()) previews.delete(key);
     requireThat(previews.size < 50, 'Too many pending imports. Wait for an older preview to expire.', 429);
     previews.set(preview.id, { preview, userId: user.id, expires: Date.now() + 30 * 60000 });

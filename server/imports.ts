@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { createHash, randomUUID } from 'node:crypto';
-import { HttpError, itemSchema, localDate, requireThat } from './domain.js';
+import { HttpError, itemSchema, requireThat } from './domain.js';
 import { SOFTWARE_STAGES, GENERAL_STAGES, type HubState, type ImportPreview, type ImportRow, type WorkItem } from '../shared/types.js';
 
 const fields = ['title', 'description', 'workstreamId', 'ownerId', 'currentOwnerId', 'kind', 'category', 'priority', 'dueDate', 'baselineDate', 'acceptanceCriteria', 'nextAction', 'clientSummary', 'clientVisible', 'tags', 'stage'] as const;
@@ -34,7 +34,7 @@ function cellText(value: ExcelJS.CellValue): string {
   }
   return String(value);
 }
-export async function previewImport(state: HubState, filename: string, content: string, mapping: Record<string, string> | undefined, now: string): Promise<ImportPreview> {
+export async function previewImport(state: HubState, filename: string, content: string, mapping: Record<string, string> | undefined): Promise<ImportPreview> {
   requireThat(/\.(xlsx|csv)$/i.test(filename), 'Use a CSV or XLSX file.');
   requireThat(/^[A-Za-z0-9+/=\r\n]+$/.test(content), 'Invalid file encoding.');
   const buffer = Buffer.from(content, 'base64');
@@ -65,7 +65,6 @@ export async function previewImport(state: HubState, filename: string, content: 
   } else for (const h of headers) { const match = fields.find(f => f.toLowerCase() === h.toLowerCase()) ?? aliases[h.toLowerCase()]; if (match) selected[h] = match; }
   requireThat(Object.values(selected).includes('title'), 'Map a column to title.');
   const duplicateKeys = new Set(state.items.map(i => `${i.workstreamId}|${i.title.trim().toLowerCase()}`));
-  const today = localDate(new Date(now), state.settings.timezone);
   const rows: ImportRow[] = table.slice(1).map((cells, index) => {
     const raw: Record<string, unknown> = {};
     headers.forEach((h, i) => { if (selected[h]) raw[selected[h]] = (cells[i] ?? '').trim(); });
@@ -80,7 +79,9 @@ export async function previewImport(state: HubState, filename: string, content: 
     if (!raw.kind && SOFTWARE_STAGES.includes(raw.stage as any) && !GENERAL_STAGES.includes(raw.stage as any)) raw.kind = 'software';
     raw.tags = String(raw.tags ?? '').split(/[;|]/).map(v => v.trim()).filter(Boolean);
     raw.clientVisible = ['true', 'yes', '1'].includes(String(raw.clientVisible ?? '').toLowerCase());
-    const candidate = { description: '', kind: 'general', category: 'action', priority: 'Medium', baselineDate: today, dueDate: today, acceptanceCriteria: '', nextAction: '', clientSummary: '', evidenceLinks: [], blocked: false, blockReason: '', ...raw };
+    const candidate = { description: '', kind: 'general', category: 'action', priority: 'Medium', baselineDate: '', dueDate: '', acceptanceCriteria: '', nextAction: '', clientSummary: '', evidenceLinks: [], blocked: false, blockReason: '', ...raw };
+    // A supplied commitment establishes a baseline; an omitted date stays unknown.
+    candidate.baselineDate ||= String(candidate.dueDate ?? '');
     const validated = itemSchema.safeParse(candidate);
     const errors = validated.success ? [] : validated.error.issues.map(i => `${i.path.join('.')}: ${i.message}`);
     const stages = candidate.kind === 'software' ? SOFTWARE_STAGES : GENERAL_STAGES;
@@ -90,7 +91,7 @@ export async function previewImport(state: HubState, filename: string, content: 
     if (!state.members.some(m => m.id === raw.currentOwnerId && m.role !== 'executive')) errors.push('Current owner is not a delivery team member.');
     const key = `${raw.workstreamId}|${String(raw.title ?? '').toLowerCase()}`;
     const duplicate = duplicateKeys.has(key);
-    duplicateKeys.add(key);
+    if (!errors.length) duplicateKeys.add(key);
     return { line: index + 2, item: { ...(validated.success ? validated.data : candidate), stage: raw.stage } as Partial<WorkItem>, errors, duplicate };
   });
   return { id: randomUUID(), headers, mapping: Object.fromEntries(Object.entries(selected).map(([header, field]) => [field, header])), rows, validCount: rows.filter(r => !r.errors.length && !r.duplicate).length, invalidCount: rows.filter(r => r.errors.length).length, duplicateCount: rows.filter(r => r.duplicate).length };

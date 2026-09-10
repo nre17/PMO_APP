@@ -1,107 +1,133 @@
-import { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, ListTodo, Layers3, ShieldAlert, FileText, Search, ArrowUpRight, ArrowRight, Plus, SlidersHorizontal, ChevronDown, PanelLeftClose, PanelLeftOpen, Settings2, HelpCircle, Check, X, RefreshCw, AlertTriangle, Clock3, CalendarDays, CircleCheck, Radio, MoreHorizontal, Play, Target, Users, Sparkles } from 'lucide-react';
-import type { Bootstrap, PageProps, WorkItem, Milestone, Report, Settings } from '../shared/types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Layers3, ShieldAlert, FileText, Search, Plus, Settings2, HelpCircle, X, RefreshCw, AlertTriangle, CircleCheck, ArrowUpRight, Command, ChevronDown, Users, PanelsTopLeft, ChevronRight } from 'lucide-react';
+import type { Bootstrap, PageProps, Report, Stage, WorkflowKind } from '../shared/types';
 import { api } from './api';
-import { Avatar, Badge, Field, Modal, formatDate, healthLabel, isOverdue, canManage, canEdit, dateToday, Empty } from './ui';
-import { Delivery, ItemDetail, ItemForm, MilestoneForm } from './Delivery';
+import { Avatar, Modal, canEdit, Empty } from './ui';
+import { ItemDetail, ItemForm } from './Delivery';
 import { Reports, ReportPresentation } from './Reports';
 import { Registers } from './Registers';
 import { MeetingWorkspace } from './Meetings';
-import { WorkstreamEditor, AuditHistory } from './OverviewExtras';
-import { reportingPeriod, confirmationState, recordAttention, submissionTiming } from '../shared/reporting';
-const navigation = [{ id:'overview', label:'Overview', icon:LayoutDashboard },{id:'my-actions',label:'My Actions',icon:ListTodo},{id:'delivery',label:'Delivery',icon:Layers3},{id:'registers',label:'Registers',icon:ShieldAlert},{id:'reports',label:'Reports',icon:FileText}];
+import WorkWorkspace from './WorkWorkspace';
+import { resolveWorkspaceRoute, workspaceHash, type WorkView } from './navigation';
+import ProjectSettings from './ProjectSettings';
+import Portfolio from './Portfolio';
+import Sources from './Sources';
+import { WorkstreamEditor } from './OverviewExtras';
+import ShowcaseGuide from './ShowcaseGuide';
+import DemoEvidence from './DemoEvidence';
 
-export default function App() { return location.pathname.startsWith('/brief/') ? <BriefRoute/> : <Workspace/>; }
+const navigation = [
+  {id:'sources',label:'Project sources',short:'Sources',icon:FileText},
+  {id:'overview',label:'Portfolio',short:'Portfolio',icon:PanelsTopLeft},
+  {id:'work',label:'Work',short:'Work',icon:Layers3},
+  {id:'registers',label:'Risks & decisions',short:'Risks',icon:ShieldAlert},
+  {id:'reports',label:'Reports',short:'Reports',icon:FileText},
+];
+const currentRoute = () => resolveWorkspaceRoute(location.hash);
+export default function App() { return location.pathname.startsWith('/brief/') ? <BriefRoute/> : location.pathname.startsWith('/evidence/') ? <DemoEvidence/> : <Workspace/>; }
+
+function useShowcaseEvidence(illustrative: boolean) {
+  useEffect(() => {
+    if (!illustrative) return;
+    const openEvidence = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button > 1) return;
+      const target = event.target;
+      const element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+      const anchor = element?.closest<HTMLAnchorElement>('a[href]');
+      if (!anchor) return;
+      try {
+        const source = new URL(anchor.href, document.baseURI);
+        const prefix = '/synthetic-demo/';
+        if (!['http:', 'https:'].includes(source.protocol) || source.host !== 'example.invalid' || !source.pathname.startsWith(prefix)) return;
+        const evidenceId = decodeURIComponent(source.pathname.slice(prefix.length));
+        if (!evidenceId) return;
+        event.preventDefault();
+        window.open(`/evidence/${encodeURIComponent(evidenceId)}`, '_blank', 'noopener,noreferrer');
+      } catch { /* Malformed references retain their normal link behavior. */ }
+    };
+    document.addEventListener('click', openEvidence);
+    document.addEventListener('auxclick', openEvidence);
+    return () => {
+      document.removeEventListener('click', openEvidence);
+      document.removeEventListener('auxclick', openEvidence);
+    };
+  }, [illustrative]);
+}
+
 function BriefRoute() {
   const [report,setReport]=useState<Report>(); const [error,setError]=useState('');
-  useEffect(()=>{ api(`/api/reports/${encodeURIComponent(location.pathname.split('/')[2])}/presentation`).then(r=>setReport(r.report || r)).catch(e=>setError(e.message)); },[]);
-  return <div className="presentation-shell"><div className="presentation-toolbar"><a className="button secondary" href="/#reports">← Back to workspace</a><button className="button primary" onClick={()=>window.print()}>Print / save PDF</button></div>{error?<div className="notice notice-warning">{error}</div>:report?<ReportPresentation report={report}/>:<div className="loading-screen">Opening approved brief…</div>}</div>;
+  const [illustrative,setIllustrative]=useState(false);
+  useShowcaseEvidence(illustrative);
+  useEffect(()=>{let active=true;api('/api/bootstrap').then(()=>api(`/api/reports/${encodeURIComponent(location.pathname.split('/')[2])}/presentation`)).then(r=>{if(active){setReport(r.report||r);setIllustrative(r.demoScenario==='consulting-lifecycle');}}).catch(e=>{if(active)setError(e.message||'This brief could not be opened. Return to the workspace and try again.');});return()=>{active=false;};},[]);
+  return <div className="presentation-shell"><div className="presentation-toolbar"><a className="button secondary" href="/#reports">Back to workspace</a><button className="button primary" disabled={!report} onClick={()=>window.print()}>Print / save PDF</button></div>{error?<div role="alert" className="notice notice-warning">{error}</div>:report?<>{illustrative&&<div className="showcase-presentation-label" role="note">Demonstration · Illustrative data<span>This report, its approval, and linked evidence packs are synthetic examples.</span></div>}<ReportPresentation report={report}/></>:<div className="loading-screen">Opening approved brief…</div>}</div>;
 }
+
 function Workspace() {
-  const [boot,setBoot]=useState<Bootstrap>(); const [error,setError]=useState(''); const [page,setPage]=useState(location.hash.slice(1)||'overview');
-  const [toast,setToast]=useState<{text:string;error:boolean}>(); const [selected,setSelected]=useState<string>(); const [create,setCreate]=useState(false);
-  const [settings,setSettings]=useState(false); const [meeting,setMeeting]=useState(false); const [help,setHelp]=useState(false); const [mobileNav,setMobileNav]=useState(false);
+  const [boot,setBoot]=useState<Bootstrap>(); const [error,setError]=useState(''); const [page,setPage]=useState(()=>currentRoute().page);
+  const [workView,setWorkView]=useState<WorkView>(()=>currentRoute().workView);
+  const [reportView,setReportView]=useState<'current'|'archive'>(()=>currentRoute().reportView);
+  const [toast,setToast]=useState<{text:string;error:boolean}>(); const [selected,setSelected]=useState<string>();
+  const [create,setCreate]=useState(false); const [settings,setSettings]=useState(false); const [meeting,setMeeting]=useState(false); const [help,setHelp]=useState(false); const [searchOpen,setSearchOpen]=useState(false);
   const [search,setSearch]=useState(''); const [workstream,setWorkstream]=useState('all'); const [deliveryFilter,setDeliveryFilter]=useState('all');
-  const load=useCallback(async()=>{const b=await api<Bootstrap>('/api/bootstrap');setBoot(b);setError('');return b;},[]);
-  useEffect(()=>{load().catch(e=>setError(e.message)); const fn=()=>setPage(location.hash.slice(1)||'overview');window.addEventListener('hashchange',fn);return()=>window.removeEventListener('hashchange',fn);},[load]);
-  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(undefined),5500);return()=>clearTimeout(timer);},[toast]);
+  const [deliveryStage,setDeliveryStage]=useState<Stage>(); const [deliveryKind,setDeliveryKind]=useState<WorkflowKind>();
+  const [registerSelection,setRegisterSelection]=useState<{id:string;key:number}>();
+  const [portfolioSelection,setPortfolioSelection]=useState<{id:string;key:number}>();
+  const [editingWorkstream,setEditingWorkstream]=useState<string>();
+  const [switchingPersona,setSwitchingPersona]=useState(false);
+  const personaSwitch=useRef(false);
+  const pendingLoads=useRef(new Set<Promise<Bootstrap>>());
+  useShowcaseEvidence(boot?.state.settings.demoScenario==='consulting-lifecycle');
+  const loadGeneration=useRef(0);
+  const load=useCallback(async()=>{if(personaSwitch.current)return;const generation=++loadGeneration.current;const request=api<Bootstrap>('/api/bootstrap');pendingLoads.current.add(request);try{const response=await request;if(generation===loadGeneration.current){setBoot(response);setError('');}return response;}catch(error){if(generation===loadGeneration.current)setError((error as Error).message);throw error;}finally{pendingLoads.current.delete(request);}},[]);
+  useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible')load().catch(()=>{});};load().catch(()=>{});const change=()=>{const route=currentRoute();setPage(route.page);setWorkView(route.workView);setReportView(route.reportView);window.scrollTo({top:0});};window.addEventListener('hashchange',change);window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',refresh);const timer=setInterval(refresh,60000);return()=>{window.removeEventListener('hashchange',change);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh);clearInterval(timer);};},[load]);
+  useEffect(()=>{const key=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setSearchOpen(v=>!v);}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
+  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(undefined),6500);return()=>clearTimeout(timer);},[toast]);
   const notify=useCallback((text:string,error=false)=>setToast({text,error}),[]);
-  const mutate=useCallback(async(path:string,body?:unknown,method?:string)=>{const result=await api(path,body,method);await load();return result;},[load]);
-  function navigate(id:string,filter='all'){location.hash=id;setPage(id);setDeliveryFilter(filter);setSearch('');setMobileNav(false);}
-  if(!boot)return <div className="loading-screen"><div className="brand-mark">Ⅱ</div><h1>Phase Two</h1>{error?<><p>{error}</p><button className="button primary" onClick={()=>load().catch(e=>setError(e.message))}><RefreshCw size={16}/>Try again</button></>:<><span className="loading-bar"/><p>Opening your delivery workspace…</p></>}</div>;
-  const {state}=boot;const user=state.members.find(m=>m.id===boot.currentUserId)||state.members[0];
-  const assigned=state.items.filter(i=>i.currentOwnerId===user.id&&i.stage!=='Closed').length;
-  const props:PageProps={state,user,mutate,notify,openItem:setSelected,aiAvailable:boot.aiAvailable};
+  const mutate=useCallback(async(path:string,body?:unknown,method?:string)=>{if(personaSwitch.current)throw new Error('Wait for the preview profile to finish changing.');const result=await api(path,body,method);await load().catch(()=>{});return result;},[load]);
+  async function switchPersona(userId:string) {
+    if(personaSwitch.current)return;
+    personaSwitch.current=true;setSwitchingPersona(true);++loadGeneration.current;
+    try{
+      await Promise.allSettled([...pendingLoads.current]);
+      await api('/api/demo/persona',{userId});
+      const response=await api<Bootstrap>('/api/bootstrap');
+      if(response.currentUserId!==userId)throw new Error('The preview profile could not be confirmed. Refresh before continuing.');
+      setBoot(response);setError('');notify('Preview profile changed');
+    }
+    catch(error){setBoot(undefined);setError((error as Error).message || 'Could not confirm the preview profile. Refresh to continue.');}
+    finally{personaSwitch.current=false;setSwitchingPersona(false);}
+  }
+  function navigate(id:string,filter='all') {const route=resolveWorkspaceRoute(id);location.hash=workspaceHash(route);setPage(route.page);setWorkView(route.workView);setReportView(route.reportView);window.scrollTo({top:0});setWorkstream('all');setDeliveryFilter(filter);setDeliveryStage(undefined);setDeliveryKind(undefined);setRegisterSelection(undefined);setSearch('');}
+  function openRegister(id:string){setSelected(undefined);navigate('registers');setRegisterSelection({id,key:Date.now()});}
+  function openUseCase(id:string){navigate('overview');setPortfolioSelection({id,key:Date.now()});}
+  if(!boot)return <div className="loading-screen"><span className="brand-mark"><ChevronRight size={26}/></span><h1>Phase Two</h1>{error?<><p role="alert">{error}</p><button className="button primary" onClick={()=>load().catch(()=>{})}><RefreshCw size={16}/>Try again</button></>:<><span className="loading-bar"/><p>Opening the project workspace…</p></>}</div>;
+  const {state}=boot; const user=state.members.find(m=>m.id===boot.currentUserId)||state.members[0];
+  const props:PageProps={state,user,mutate,notify,openItem:setSelected,openRegister,aiAvailable:boot.aiAvailable};
   const item=state.items.find(i=>i.id===selected);
-  return <div className={`app-shell ${mobileNav?'nav-open':''}`}>
-    <aside className="sidebar"><a className="brand" href="#overview"><span className="brand-mark">Ⅱ</span><span>phase two<span className="brand-sub">DELIVERY HUB</span></span></a>
-      <div className="workspace-label"><span className="workspace-symbol">D</span><div><strong>{state.settings.projectName}</strong><span>{state.settings.phaseName} · Internal workspace</span></div></div>
-      <div className="nav-caption">WORKSPACE</div><nav aria-label="Main navigation">{navigation.map(n=><a key={n.id} href={`#${n.id}`} onClick={()=>navigate(n.id)} className={`nav-item ${page===n.id?'active':''}`}><n.icon size={19}/><span>{n.label}</span>{n.id==='my-actions'&&assigned>0&&<span className="nav-count">{assigned}</span>}{page===n.id&&<span className="nav-current"/>}</a>)}</nav>
-      <div className="sidebar-workstreams"><div className="nav-caption">WORKSTREAMS</div>{state.workstreams.map(w=><button key={w.id} className={`workstream-nav ${workstream===w.id?'selected':''}`} onClick={()=>{setWorkstream(w.id);navigate('delivery');}}><span className="stream-dot" style={{background:w.color}}/>{w.shortName}<span className="tiny-count">{state.items.filter(i=>i.workstreamId===w.id&&i.stage!=='Closed').length}</span></button>)}</div>
-      <div className="sidebar-bottom"><div className="demo-card"><span className="demo-dot"/><strong>Demo workspace</strong><p>Fictional data. Real workflows.</p></div><button className="nav-item" onClick={()=>setHelp(true)}><HelpCircle size={18}/>Workspace guide<ArrowUpRight size={15}/></button><button className="nav-item" onClick={()=>setSettings(true)}><Settings2 size={18}/>Project settings</button><div className="profile"><Avatar member={user} size={36}/><div><strong>{user.name}</strong><span>{user.title}</span></div></div></div>
-    </aside>
-    {mobileNav&&<button className="nav-backdrop" aria-label="Close navigation" onClick={()=>setMobileNav(false)}/>}
-    <main className="main-shell"><header className="topbar"><div className="breadcrumbs"><button className="icon-button mobile-toggle" onClick={()=>setMobileNav(!mobileNav)} aria-label="Toggle navigation"><PanelLeftOpen size={20}/></button><span>Workspace</span><span className="breadcrumb-slash">/</span><strong>{navigation.find(n=>n.id===page)?.label||'Overview'}</strong></div><div className="topbar-actions"><span className="private-label"><Radio size={13}/>Internal only</span><div className="persona-switch"><Avatar member={user} size={26}/><select aria-label="Demo persona" value={user.id} onChange={e=>mutate('/api/demo/persona',{userId:e.target.value}).then(()=>notify('Demo persona changed')).catch(e=>notify(e.message,true))}>{state.members.map(m=><option key={m.id} value={m.id}>{m.name} · {m.role}</option>)}</select><ChevronDown size={13}/></div><button className="icon-button" title="Refresh project data" aria-label="Refresh project data" onClick={()=>load().then(()=>notify('Project data refreshed')).catch(e=>notify(e.message,true))}><RefreshCw size={17}/></button></div></header>
-    <div className="workspace-content">
-      {page==='overview'&&<Overview {...props} navigate={navigate} startMeeting={()=>setMeeting(true)}/>}
-      {page==='my-actions'&&<MyActions {...props} navigate={navigate}/>}
-      {page==='delivery'&&<Delivery {...props} initialFilter={deliveryFilter} search={search} setSearch={setSearch} workstream={workstream} setWorkstream={setWorkstream} createItem={()=>setCreate(true)}/>}
-      {page==='registers'&&<Registers {...props}/>}
-      {page==='reports'&&<Reports {...props}/>}
-    </div><footer className="workspace-footer"><span><span className="live-dot"/>Changes saved to this workspace</span><span>Phase Two · Fictional demonstration</span></footer></main>
-    {item&&<ItemDetail {...props} item={item} onClose={()=>setSelected(undefined)}/>}
-    {create&&<ItemForm {...props} onClose={()=>setCreate(false)} defaultWorkstream={workstream!=='all'?workstream:undefined}/>}
-    {settings&&<ProjectSettings {...props} onClose={()=>setSettings(false)}/>}
-    {meeting&&<MeetingWorkspace {...props} onClose={()=>setMeeting(false)}/>}
-    {help&&<Modal title="A quieter way to run delivery" description="Your daily and weekly operating rhythm." onClose={()=>setHelp(false)}><div className="guide-steps">{[['01','Start with exceptions','Run the daily Teams meeting from Overview. Discuss blocked work, approaching dates, and decisions that need help.'],['02','Keep one working record','Use Delivery for the agreed backlog. Assignments take effect immediately. Add testing evidence to the same item through each stage.'],['03','Confirm the week','Workstream leads review their prefilled update under Reports. PMO assembles the brief and a designated manager approves the client version.'],['04','Present with confidence','Open an approved brief in presentation mode. Its saved contents stay unchanged as delivery continues.']].map(([n,t,d])=><div className="guide-step" key={n}><span>{n}</span><div><h3>{t}</h3><p>{d}</p></div></div>)}</div><div className="notice">Switch the demo persona in the top-right corner to try each role. All people and project data in this workspace are fictional.</div></Modal>}
-    {toast&&<div className={`toast ${toast.error?'toast-error':''}`} role={toast.error?'alert':'status'}>{toast.error?<AlertTriangle size={18}/>:<CircleCheck size={18}/>}<span>{toast.text}</span><button onClick={()=>setToast(undefined)} aria-label="Dismiss notification"><X size={16}/></button></div>}
+  const navLinks=(ids:string[],mobile=false)=>navigation.filter(n=>ids.includes(n.id)).map(n=><a key={n.id} href={`#${n.id}`} onClick={event=>{event.preventDefault();navigate(n.id);}} aria-current={page===n.id?'page':undefined} className={`nav-item ${page===n.id?'active':''}`}><n.icon size={17}/><span>{mobile?n.short:n.label}</span></a>);
+  return <div className="app-shell">
+    <a className="skip-link" href="#page-content" onClick={e=>{e.preventDefault();document.getElementById('page-content')?.focus();}}>Skip to content</a>
+    <aside className="sidebar"><a className="brand" href="#overview" onClick={()=>navigate('overview')}><span className="brand-mark"><ChevronRight size={26}/></span><span>Phase Two<small>AI programme office</small></span></a><div className="workspace-label"><div><strong>{state.settings.projectName.split(' · ')[0]}</strong><span>{state.settings.phaseName}</span></div></div><nav aria-label="Main navigation"><div className="nav-group">{navLinks(['overview','work','registers'])}<button className="nav-item" onClick={()=>setMeeting(true)}><Users size={17}/><span>Meetings</span></button>{navLinks(['reports'])}</div></nav><div className="sidebar-bottom">{navLinks(['sources'])}<button className="nav-item" onClick={()=>setHelp(true)}><HelpCircle size={17}/>How it works</button><button className="nav-item" onClick={()=>setSettings(true)}><Settings2 size={17}/>Project settings</button><div className="workspace-person"><Avatar member={user} size={32}/><div><strong>{user.name}</strong><span>{user.role==='pmo'?'PMO':user.role.charAt(0).toUpperCase()+user.role.slice(1)} · Local preview</span></div></div></div></aside>
+    <div className="main-shell"><header className="topbar"><div className="breadcrumbs"><span>{state.settings.projectName.split(' · ')[0]}</span><span className="breadcrumb-slash">/</span><strong>{navigation.find(n=>n.id===page)?.label}</strong></div><div className="topbar-actions"><button className="global-search" onClick={()=>setSearchOpen(true)} aria-label="Search the hub"><Search size={17}/><span>Search the hub…</span><kbd><Command size={11}/>K</kbd></button><button className="icon-button" aria-label="Refresh project data" onClick={()=>load().then(()=>notify('Project data refreshed')).catch(e=>notify(e.message,true))}><RefreshCw size={17}/></button><button className="icon-button mobile-settings" aria-label="Project settings" onClick={()=>setSettings(true)}><Settings2 size={18}/></button><div className="persona-switch"><Avatar member={user} size={30}/><label><span>Preview as</span><select aria-label="Demo persona" disabled={switchingPersona} aria-busy={switchingPersona} value={user.id} onChange={e=>void switchPersona(e.target.value)}>{state.members.map(m=><option key={m.id} value={m.id}>{m.name} · {state.settings.demoScenario === 'consulting-lifecycle' ? m.title || m.role : m.role}</option>)}</select></label><ChevronDown size={12}/></div>{canEdit(user)&&!['overview','work'].includes(page)&&<button className="button primary global-create" onClick={()=>setCreate(true)}><Plus size={16}/><span>Add work</span></button>}{page==='overview'&&['pmo','admin'].includes(user.role)&&<button className="button primary global-create" onClick={()=>setEditingWorkstream('new')}><Plus size={16}/><span>Add use case</span></button>}</div></header>
+      {state.settings.demoScenario==='consulting-lifecycle'&&<ShowcaseGuide state={state} onNavigate={navigate} onOpenItem={setSelected} onMeeting={()=>setMeeting(true)} onAddWork={()=>setCreate(true)}/>}
+      <main id="page-content" className="workspace-content" tabIndex={-1}>
+        {error&&<div className="notice notice-warning" role="alert">Could not refresh the project. You are viewing the last loaded records. {error}<button className="button secondary small" onClick={()=>load().catch(()=>{})}>Try again</button></div>}
+        {page==='overview'&&<Portfolio {...props} initialSelection={portfolioSelection} onWorkstream={setEditingWorkstream} onDelivery={id=>{navigate('delivery');setWorkstream(id);}}/>}
+        {page==='sources'&&<Sources {...props}/>}
+        {page==='work'&&<WorkWorkspace {...props} view={workView} onView={view=>navigate('work'+(view==='all'?'':'?view='+view))} navigate={navigate} startMeeting={()=>setMeeting(true)} initialFilter={deliveryFilter} initialStage={deliveryStage} initialKind={deliveryKind} search={search} setSearch={setSearch} workstream={workstream} setWorkstream={setWorkstream} createItem={()=>setCreate(true)}/>}
+        {page==='registers'&&<Registers {...props} initialSelection={registerSelection}/>}{page==='reports'&&<Reports key={reportView} {...props} onCurrentPeriod={()=>navigate('reports')} onViewChange={view=>navigate(view==='archive'?'reports?view=archive':'reports')} initialView={reportView}/>}
+      </main><footer className="workspace-footer"><span>Phase Two · {state.settings.demoScenario==='consulting-lifecycle'?'Illustrative demonstration':'Local preview'}</span><button className="text-button" onClick={()=>setHelp(true)}>A guide to the workflow<ArrowUpRight size={13}/></button></footer>
+    </div><nav className="mobile-navigation" aria-label="Mobile navigation">{navLinks(['overview','work','registers','reports'],true)}</nav>
+    {item&&<ItemDetail key={item.id} {...props} item={item} onClose={()=>setSelected(undefined)}/>}{create&&<ItemForm {...props} onClose={()=>setCreate(false)} defaultWorkstream={workstream!=='all'?workstream:undefined}/>}{settings&&<ProjectSettings {...props} onClose={()=>setSettings(false)}/>}{meeting&&<MeetingWorkspace {...props} onClose={()=>setMeeting(false)}/>}{searchOpen&&<WorkSearch {...props} onUseCase={openUseCase} onClose={()=>setSearchOpen(false)}/>}
+    {editingWorkstream&&<WorkstreamEditor key={editingWorkstream} {...props} id={editingWorkstream} onClose={()=>setEditingWorkstream(undefined)}/>}
+    {help&&<Modal title="From opportunity to sustained value" description="One use case, connected through its consulting and delivery lifecycle." onClose={()=>setHelp(false)}><div className="guide-steps">{[['1','Define the use case','Start in the portfolio. Record the outcome, scope, lead, current phase and next gate. Keep RFP, discovery, assessment and design artifacts with the use case.'],['2','Connect the plan to delivery','Plan deliverables and milestones, then link research, data, engineering, QA and release work. Review blockers and handoffs in Work → Needs attention. Raise an escalation when you need a named person to make a decision.'],['3','Confirm the week’s position','Leads review the use case update. PMO prepares the brief from those records; a designated manager approves the client edition.'],['4','Present the approved edition','Open the saved brief for the client conversation. Later project changes do not rewrite that edition.']].map(([n,title,detail])=><div className="guide-step" key={n}><span>{n}</span><div><h3>{title}</h3><p>{detail}</p></div></div>)}</div><div className="notice">The “Preview as” selector lets you try the local preview roles. Phase and artifact status are recorded assessments; formal approval evidence remains with the underlying records. Corporate sign-in and shared hosting belong to the live rollout.</div></Modal>}
+    {toast&&<div className={`toast ${toast.error?'toast-error':''}`} role={toast.error?'alert':'status'}>{toast.error?<AlertTriangle size={19}/>:<CircleCheck size={19}/>}<span>{toast.text}</span><button className="icon-button" onClick={()=>setToast(undefined)} aria-label="Dismiss notification"><X size={16}/></button></div>}
   </div>;
 }
-function Overview(props:PageProps&{navigate:(page:string,filter?:string)=>void;startMeeting:()=>void}) {
-  const {state,user,openItem,navigate,startMeeting}=props; const active=state.items.filter(i=>i.stage!=='Closed');const blocked=active.filter(i=>i.blocked); const waiting=active.filter(i=>i.stage==='Awaiting client acceptance');
-  const [milestone,setMilestone]=useState<Milestone>();const [createMilestone,setCreateMilestone]=useState(false);const [editStream,setEditStream]=useState<string>();const [auditOpen,setAuditOpen]=useState(false);
-  const exceptions=[...active].filter(i=>i.blocked||recordAttention(i,state.settings).overdue||i.stage==='Awaiting client acceptance').sort((a,b)=>Number(b.blocked)-Number(a.blocked)||a.dueDate.localeCompare(b.dueDate)).slice(0,5);
-  const currentPeriod=reportingPeriod(new Date(),state.settings.timezone,state.settings.cutoffHour);const confirmed=state.workstreams.filter(w=>confirmationState(state,w.id,currentPeriod.end).confirmed).length;const escalationCount=active.filter(i=>recordAttention(i,state.settings).escalationDue).length;
-  return <><div className="page-header"><div><div className="eyebrow">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:state.settings.timezone})}</div><h1 className="page-title">Delivery, in focus<span className="title-dot">.</span></h1><p className="page-subtitle">The progress, decisions, and next steps that matter today.</p></div><button className="button primary" onClick={startMeeting}><Play size={15} fill="currentColor"/>Run daily review</button></div>
-    <div className="metric-grid"><button className="metric-card" onClick={()=>navigate('delivery','active')}><span className="metric-label">Active commitments<Layers3 size={17}/></span><div className="metric-value">{active.length}<span className="metric-unit">across {state.workstreams.length} workstreams</span></div><span className="metric-foot"><span className="mini-dot violet"/>{state.items.filter(i=>i.stage==='Closed'&&!!i.closedAt).length} accepted & complete<ArrowUpRight size={15}/></span></button><button className="metric-card" onClick={()=>navigate('delivery','blocked')}><span className="metric-label">Blocked work<ShieldAlert size={17}/></span><div className="metric-value">{blocked.length}<span className="metric-unit">need a next move</span></div><span className="metric-foot warn"><span className="mini-dot amber"/>{escalationCount} need escalation review<ArrowUpRight size={15}/></span></button><button className="metric-card" onClick={()=>navigate('delivery','client')}><span className="metric-label">Client acceptance<CircleCheck size={17}/></span><div className="metric-value">{waiting.length}<span className="metric-unit">awaiting confirmation</span></div><span className="metric-foot">Production verified, ready for review<ArrowUpRight size={15}/></span></button><button className="metric-card" onClick={()=>navigate('reports')}><span className="metric-label">Weekly readiness<FileText size={17}/></span><div className="metric-value">{confirmed}<span className="metric-denominator">/ {state.workstreams.length}</span><span className="metric-unit">current confirmations</span></div><span className="metric-foot">Thursday client brief<ArrowUpRight size={15}/></span></button></div>
-    <div className="overview-main"><section className="panel workstreams-panel"><div className="panel-header"><div><span className="section-kicker">THE BIG PICTURE</span><h2>Workstreams</h2></div><div className="heading-inline">{['pmo','admin'].includes(user.role)&&<button className="icon-button" onClick={()=>setEditStream('new')} aria-label="Add workstream"><Plus size={17}/></button>}<button className="button ghost small" onClick={()=>navigate('delivery')}>View delivery<ArrowUpRight size={15}/></button></div></div><div className="workstreams-head"><span>Workstream</span><span>Delivery health</span><span>Accepted / total</span><span>Lead</span></div>{state.workstreams.map(w=>{const items=state.items.filter(i=>i.workstreamId===w.id),done=items.filter(i=>i.stage==='Closed'&&!!i.closedAt).length;const lead=state.members.find(m=>m.id===w.leadId);const age=(Date.now()-new Date(w.updatedAt).getTime())/86400000;return <div className="workstream-row" key={w.id}><button className="stream-title" onClick={()=>setEditStream(w.id)}><span className="stream-icon" style={{background:w.color+'18',color:w.color}}><Layers3 size={19}/></span><span><strong>{w.name}</strong><small>{w.description}</small></span></button><div><Badge tone={w.health}>{healthLabel[w.health]}</Badge>{age>7&&<small className="stale-label">Confirmation is stale</small>}</div><div className="progress-cell"><span><strong>{done}</strong> / {items.length}</span><div className="segmented-progress">{items.map(i=><i key={i.id} className={i.stage==='Closed'?'done':i.blocked?'blocked':''}/>)}</div></div><Avatar member={lead} size={32}/></div>})}<div className="panel-footnote"><span className="mini-dot green"/>Health reflects the lead’s assessment. Freshness and exceptions are tracked separately.</div></section>
-    <section className="weekly-card"><div className="weekly-card-top"><span className="weekly-icon"><FileText size={22}/></span><span className="tag">THURSDAY RITUAL</span></div><h2>One update.<br/>A clearer week.</h2><p>Review what changed, confirm what comes next, and prepare your client brief.</p><div className="weekly-readiness">{state.workstreams.map(w=>{const readiness=confirmationState(state,w.id,currentPeriod.end);const sub=readiness.confirmed;return <div key={w.id}><span className="stream-dot" style={{background:w.color}}/>{w.shortName}<span className={sub?'confirmed-indicator':'pending-indicator'}>{sub?<><Check size={13}/>Confirmed</>:<><Clock3 size={13}/>To confirm</>}</span></div>})}</div><button className="button light" onClick={()=>navigate('reports')}>Open weekly brief<ArrowRight size={17}/></button></section></div>
-    <div className="overview-bottom"><section className="panel"><div className="panel-header"><div className="heading-inline"><span className="attention-icon"><Target size={19}/></span><h2>Needs attention</h2><span className="count-pill">{exceptions.length}</span></div><button className="button ghost small" onClick={()=>navigate('delivery','attention')}>View all<ArrowUpRight size={15}/></button></div>{exceptions.length===0?<Empty title="Nothing needs intervention">Your active commitments are moving without flagged exceptions.</Empty>:<div className="attention-list">{exceptions.map(i=><button className="attention-row" key={i.id} onClick={()=>openItem(i.id)}><span className={`attention-marker ${i.blocked?'amber':'violet'}`}/><div><strong>{i.title}</strong><span><b>{i.id}</b><i>·</i>{i.blocked?i.blockReason:i.stage==='Awaiting client acceptance'?'Waiting for client confirmation':i.nextAction}</span></div><div className="attention-owner"><Avatar member={state.members.find(m=>m.id===i.currentOwnerId)} size={27}/><span className={recordAttention(i,state.settings).overdue?'date-overdue':''}>{formatDate(i.dueDate)}</span></div><ArrowUpRight size={15}/></button>)}</div>}</section>
-    <section className="panel milestones-panel"><div className="panel-header"><h2>On the horizon</h2>{['pmo','admin'].includes(user.role)&&<button className="icon-button" title="Add milestone" aria-label="Add milestone" onClick={()=>setCreateMilestone(true)}><Plus size={18}/></button>}</div><div className="milestone-list">{[...state.milestones].sort((a,b)=>a.forecastDate.localeCompare(b.forecastDate)).slice(0,4).map(m=><button className="milestone-row" key={m.id} onClick={()=>setMilestone(m)}><div className="milestone-date"><span>{formatDate(m.forecastDate,{month:'short'})}</span><strong>{formatDate(m.forecastDate,{day:'numeric'})}</strong></div><div><strong>{m.title}</strong><span>{m.status==='complete'?'Accepted & complete':m.status==='at_risk'?'Forecast at risk':'Upcoming milestone'}</span></div><span className={`health-pin ${m.status==='at_risk'?'amber':m.status==='complete'?'green':'violet'}`}/></button>)}</div></section></div>
-    <section className="recent-activity"><div className="heading-inline" style={{justifyContent:'space-between',marginBottom:12}}><span className="section-kicker">LATEST MOVEMENT</span><button className="button ghost small" onClick={()=>setAuditOpen(true)}>View history<ArrowUpRight size={14}/></button></div><div className="activity-strip">{[...state.events].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,3).map(e=><div className="activity-item" key={e.id}><Avatar member={state.members.find(m=>m.id===e.actorId)} size={27}/><div><span>{e.detail}</span><small>{formatDate(e.createdAt)} · {state.members.find(m=>m.id===e.actorId)?.name.split(' ')[0]||'Team'}</small></div></div>)}</div></section>
-    {(milestone||createMilestone)&&<MilestoneForm {...props} milestone={milestone} onClose={()=>{setMilestone(undefined);setCreateMilestone(false);}}/>}
-    {auditOpen&&<AuditHistory {...props} onClose={()=>setAuditOpen(false)}/>}
-    {editStream&&<WorkstreamEditor {...props} id={editStream} onClose={()=>setEditStream(undefined)}/>}
-  </>;
+
+function WorkSearch({onClose,onUseCase,...props}:PageProps&{onClose:()=>void;onUseCase:(id:string)=>void}) {
+  const [query,setQuery]=useState(''); const term=query.trim().toLowerCase();
+  const cases=props.state.workstreams.filter(w=>[w.name,w.shortName,w.description].join(' ').toLowerCase().includes(term)).slice(0,10);
+  const matches=props.state.items.filter(i=>[i.title,i.id,i.nextAction].join(' ').toLowerCase().includes(term)).slice(0,12);
+  return <Modal title="Search the hub" description="Find a use case or a work item by name, reference or next action." onClose={onClose}><div className="search-input command-input"><Search size={20}/><input autoFocus aria-label="Search use cases and work" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Use case, title or reference…"/></div><div className="search-results">{cases.length>0&&<h3 className="search-section-label">Use cases</h3>}{cases.map(w=><button key={w.id} onClick={()=>{onClose();onUseCase(w.id);}}><div><strong>{w.name}</strong><span>Use case · {w.lifecyclePhase||'Phase not yet set'}</span></div><ArrowUpRight size={16}/></button>)}{matches.length>0&&<h3 className="search-section-label">Work items</h3>}{matches.map(i=><button key={i.id} onClick={()=>{onClose();props.openItem(i.id);}}><div><strong>{i.title}</strong><span>{props.state.workstreams.find(w=>w.id===i.workstreamId)?.shortName} · {i.stage}</span></div><ArrowUpRight size={16}/></button>)}{!matches.length&&!cases.length&&<Empty title="No matches">Try part of a use case name, title or work reference.</Empty>}</div></Modal>;
 }
-function MyActions(props:PageProps&{navigate:(page:string,filter?:string)=>void}) {
-  const {state,user,openItem,navigate}=props;
-  const now=new Date();
-  const urgency=(flags:ReturnType<typeof recordAttention>)=>Number(flags.escalationDue)*8+Number(flags.overdue)*4+Number(flags.dueToday)*2+Number(flags.dueReminder);
-  const items=state.items.filter(i=>i.currentOwnerId===user.id&&i.stage!=='Closed').map(item=>({item,flags:recordAttention(item,state.settings,now)})).sort((a,b)=>urgency(b.flags)-urgency(a.flags)||a.item.dueDate.localeCompare(b.item.dueDate));
-  const regs=state.registers.filter(r=>r.ownerId===user.id&&r.status!=='resolved').map(record=>({record,flags:recordAttention(record,state.settings,now)})).sort((a,b)=>urgency(b.flags)-urgency(a.flags)||a.record.dueDate.localeCompare(b.record.dueDate));
-  const reminder=(flags:ReturnType<typeof recordAttention>,dueDate:string)=>[
-    flags.escalationDue?'Escalation review':'',
-    flags.overdue?'Overdue':flags.dueToday?'Due today':flags.dueReminder?(state.settings.workingDays.includes(new Date(`${dueDate}T12:00:00Z`).getUTCDay())?'Due next working day':'Due before next working day'):'',
-  ].filter(Boolean).join(' · ');
-  const periodEnd=reportingPeriod(now,state.settings.timezone,state.settings.cutoffHour).end;
-  const managedStreams=state.workstreams.filter(w=>['pmo','admin'].includes(user.role)||(user.role==='lead'&&w.leadId===user.id));
-  const dueSoon=items.filter(({flags})=>flags.dueToday||flags.dueReminder).length;
-  return <>
-    <div className="page-header"><div><div className="eyebrow">YOUR NEXT MOVES</div><h1 className="page-title">My Actions<span className="title-dot">.</span></h1><p className="page-subtitle">What needs your attention, {user.name.split(' ')[0]}.</p></div><Avatar member={user} size={48}/></div>
-    <div className="actions-summary"><span><strong>{items.length}</strong> active commitments</span><span><strong>{items.filter(({flags})=>flags.overdue).length}</strong> overdue</span><span><strong>{dueSoon}</strong> due soon</span><span><strong>{regs.length}</strong> open follow-ups</span></div>
-    <section className="panel"><div className="panel-header"><h2>Assigned to you</h2><Badge>{user.title}</Badge></div>{items.length?<div className="attention-list">{items.map(({item:i,flags})=><button className="attention-row" key={i.id} onClick={()=>openItem(i.id)}><div className="item-stage-icon"><ListTodo size={19}/></div><div><strong>{i.title}</strong><span>{i.id} · {i.nextAction}</span>{reminder(flags,i.dueDate)&&<span style={{color:flags.escalationDue||flags.overdue?'#a3374b':'#8c5a19',fontWeight:600}}>{reminder(flags,i.dueDate)}</span>}</div><Badge tone={flags.escalationDue?'red':i.blocked?'amber':'neutral'}>{i.blocked?'Blocked':i.stage}</Badge><span className={flags.overdue?'date-overdue':'muted'}>{formatDate(i.dueDate)}</span><ArrowUpRight size={16}/></button>)}</div>:<Empty title="Your queue is clear">Items assigned to you will appear here immediately.</Empty>}</section>
-    <div className="overview-bottom">
-      <section className="panel"><div className="panel-header"><h2>Your follow-ups</h2></div>{regs.length?regs.map(({record:r,flags})=><button className="attention-row" key={r.id} onClick={()=>navigate('registers')}><div><strong>{r.title}</strong><span>{r.type} · {r.nextAction}</span><span style={reminder(flags,r.dueDate)?{color:flags.escalationDue||flags.overdue?'#a3374b':'#8c5a19',fontWeight:600}:undefined}>{reminder(flags,r.dueDate)||'Upcoming follow-up'} · {formatDate(r.dueDate)}</span></div><Badge tone={flags.escalationDue?'red':'amber'}>{r.status}</Badge><ArrowUpRight size={16}/></button>):<Empty title="No open register items"/>}</section>
-      <section className="panel"><div className="panel-header"><h2>Weekly responsibilities</h2></div><div className="panel-body"><p className="muted">{managedStreams.length?'Review the workstream summaries and confirm the week’s progress.':'Keep your commitments current so your workstream lead can confirm the weekly update.'}</p>
-        {managedStreams.map(stream=>{
-          const ready=confirmationState(state,stream.id,periodEnd);
-          const timing=submissionTiming(periodEnd,state.settings,ready.confirmed?ready.submission?.confirmedAt:undefined,now);
-          const status=ready.confirmed?(timing.late?'Confirmed late':'Confirmed'):ready.stale?(timing.overdue?'Reconfirmation overdue':'Needs reconfirmation'):timing.overdue?'Confirmation overdue':'Confirmation due';
-          return <button className="attention-row" key={stream.id} onClick={()=>navigate('reports')}><div><strong>{stream.shortName}</strong><span>Confirm by {formatDate(timing.deadlineAt,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:state.settings.timezone})} · {state.settings.timezone}</span></div><Badge tone={timing.overdue?'red':ready.confirmed&&!timing.late?'green':'amber'}>{status}</Badge></button>;
-        })}
-        {user.canApproveReports&&<div className="notice">You can approve client briefs for publication.</div>}<button className="button secondary" onClick={()=>navigate('reports')}>Open reporting<ArrowRight size={16}/></button></div></section>
-    </div>
-  </>;
-}
-function ProjectSettings({onClose,...props}:PageProps&{onClose:()=>void}) {const [form,setForm]=useState<Settings>(props.state.settings);const [busy,setBusy]=useState(false);return <Modal title="Project settings" description="A few shared rules for the whole team." onClose={onClose}><form onSubmit={async e=>{e.preventDefault();setBusy(true);try{await props.mutate('/api/settings',form,'PATCH');props.notify('Project settings saved');onClose();}catch(e){props.notify((e as Error).message,true);}finally{setBusy(false);}}}><div className="form-grid"><Field label="Project name"><input value={form.projectName} required onChange={e=>setForm({...form,projectName:e.target.value})}/></Field><Field label="Phase"><input value={form.phaseName} required onChange={e=>setForm({...form,phaseName:e.target.value})}/></Field><Field label="Project timezone"><select value={form.timezone} onChange={e=>setForm({...form,timezone:e.target.value})}><option>Asia/Dubai</option><option>Europe/London</option><option>UTC</option><option>Asia/Riyadh</option></select></Field><Field label="Escalate blocked work after (working days)"><input type="number" min={1} max={30} value={form.blockedEscalationDays} onChange={e=>setForm({...form,blockedEscalationDays:Number(e.target.value)})}/></Field><Field label="Thursday submission hour (0–23)"><input type="number" min={0} max={23} value={form.submissionHour} onChange={e=>setForm({...form,submissionHour:Number(e.target.value)})}/></Field><Field label="Thursday reporting cutoff (0–23)"><input type="number" min={0} max={23} value={form.cutoffHour} onChange={e=>setForm({...form,cutoffHour:Number(e.target.value)})}/></Field></div><Field label="Working days"><div className="weekday-picker">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day,i)=><label key={day}><input type="checkbox" checked={form.workingDays.includes(i)} onChange={e=>setForm({...form,workingDays:e.target.checked?[...form.workingDays,i]:form.workingDays.filter(d=>d!==i)})}/>{day}</label>)}</div></Field><div className="notice">This local demonstrator uses fictional personas. Corporate sign-in and shared hosting are part of the live rollout.</div><div className="form-actions"><button type="button" className="button secondary" onClick={onClose}>Close</button>{['pmo','admin'].includes(props.user.role)&&<button disabled={busy} className="button primary">{busy?'Saving…':'Save settings'}</button>}</div></form></Modal>}

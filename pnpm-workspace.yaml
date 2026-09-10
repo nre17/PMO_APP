@@ -1,2 +1,5 @@
 allowBuilds:
   esbuild: true
+overrides:
+  # ExcelJS only calls the CommonJS v4 export; uuid 11 retains that API.
+  'exceljs@4.4.0>uuid': 11.1.1

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Opening review evidence · Phase Two</title></head>
+<body>
+  <p>Opening the evidence record…</p>
+  <p><a href="/#work?view=artifacts">Return to the workspace</a></p>
+  <script>
+    // Preserve links to the former generic evidence page.
+    try {
+      const reference = decodeURIComponent(location.hash.slice(1));
+      location.replace(reference ? '/evidence/' + encodeURIComponent(reference) : '/#work?view=artifacts');
+    } catch {
+      document.querySelector('p').textContent = 'This evidence reference could not be opened. Return to the workspace and select the record again.';
+    }
+  </script>
+</body>
+</html>

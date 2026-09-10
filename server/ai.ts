@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
-import { HttpError, requireThat, reportBodySchema } from './domain.js';
+import { day, HttpError, requireThat, reportBodySchema } from './domain.js';
 import type { HubState, Report } from '../shared/types.js';
 
 export const aiAvailable = () => Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL);
@@ -39,7 +39,7 @@ export async function extractNotes(state: HubState, notes: string) {
   for (const proposal of result.proposals) {
     requireThat(proposal.sourceQuote.trim() && notes.includes(proposal.sourceQuote), 'AI could not substantiate a proposal with an exact source quote.', 502);
     requireThat(proposal.ownerId === null || state.members.some(m => m.id === proposal.ownerId), 'AI returned an unknown owner.', 502);
-    requireThat(proposal.dueDate === null || /^\d{4}-\d{2}-\d{2}$/.test(proposal.dueDate), 'AI returned an invalid date.', 502);
+    requireThat(proposal.dueDate === null || day.safeParse(proposal.dueDate).success, 'AI returned an invalid date.', 502);
   }
   return result;
 }

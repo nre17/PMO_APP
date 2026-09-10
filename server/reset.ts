@@ -1,26 +1,23 @@
 import path from 'node:path';
-import { rename, readFile, unlink } from 'node:fs/promises';
+import { mkdir, rename } from 'node:fs/promises';
+import { seedConfiguration } from './seed-config.js';
+import { acquireLocalOwnership } from './db.js';
 
 try { process.loadEnvFile(); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
-if ((process.env.APP_MODE ?? 'demo') !== 'demo') throw new Error('Reset is only available in synthetic demo mode.');
+if ((process.env.APP_MODE ?? 'demo') !== 'demo') throw new Error('Reset is only available in local preview mode.');
 if (process.env.DATABASE_URL) throw new Error('Reset does not modify an external PostgreSQL database.');
 const workspace = path.resolve('.');
-const dataDir = path.resolve(process.env.DATA_DIR ?? '.data/pmo');
+const dataDir = path.resolve(seedConfiguration().dataDir);
 if (!dataDir.startsWith(`${workspace}${path.sep}`) || dataDir === workspace) throw new Error('Reset requires a data directory strictly inside this workspace.');
 const destination = `${dataDir}.backup-${Date.now()}`;
-try {
-  const lock = JSON.parse(await readFile(`${dataDir}.pmo-lock`, 'utf8'));
-  if (Number.isInteger(lock.pid)) {
-    let running = true;
-    try { process.kill(lock.pid, 0); } catch (error: any) { if (error.code === 'ESRCH') running = false; }
-    if (running) throw new Error('Stop the running demo server before resetting its data.');
-  }
-} catch (error: any) { if (error.code !== 'ENOENT') throw error; }
+await mkdir(path.dirname(dataDir), { recursive: true });
+// Share the startup ownership guard: reject unknown/live owners and keep the
+// claim until archiving finishes, so another server cannot open this directory.
+const release = await acquireLocalOwnership(dataDir);
 try {
   await rename(dataDir, destination);
-  try { await unlink(`${dataDir}.pmo-lock`); } catch (error: any) { if (error.code !== 'ENOENT') throw error; }
-  console.log(`Demo data preserved at ${destination}. Restart the server to seed a fresh workspace.`);
+  console.log(`Local data preserved at ${destination}. Restart the server to seed a fresh workspace.`);
 } catch (error: any) {
-  if (error.code === 'ENOENT') console.log('No demo data directory exists. Starting the server will create it.');
-  else throw new Error('Could not archive demo data. Stop the server before resetting.', { cause: error });
-}
+  if (error.code === 'ENOENT') console.log('No local data directory exists. Starting the server will create it.');
+  else throw new Error('Could not archive local data. Stop the server before resetting.', { cause: error });
+} finally { await release(); }
