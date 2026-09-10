@@ -7,7 +7,7 @@ import { createApp } from '../server/app.js';
 import { createShowcaseState } from '../server/showcase-seed.js';
 import { createPortfolioState } from '../server/portfolio-seed.js';
 import { seedConfiguration } from '../server/seed-config.js';
-import { schemas, validateReferences } from '../server/domain.js';
+import { authorize, schemas, validateReferences } from '../server/domain.js';
 import { LIFECYCLE_PHASES, type HubState } from '../shared/types.js';
 import { confirmationState, reportingPeriod } from '../shared/reporting.js';
 
@@ -123,6 +123,47 @@ test('manager review history spans three months and approved archives contain on
   assert.deepEqual(current, snapshot);
 });
 
+test('fictional cross-functional team has scoped responsibilities and consistent ownership history', () => {
+  const state = createShowcaseState(fixedNow), memberById = new Map(state.members.map(member => [member.id, member]));
+  assert.ok(state.members.length >= 8 && state.members.length <= 10);
+  assert.equal(new Set(state.members.map(member => member.name)).size, state.members.length);
+  for (const member of state.members) {
+    assert.match(member.name, /^[A-Z][a-z]+ [A-Z][a-z]+$/);
+    assert.doesNotMatch(member.name, /demo|sample|example/i);
+    assert.equal(member.initials, member.name.split(' ').map(part => part[0]).join(''));
+    assert.ok(member.title && /^#[a-f\d]{6}$/i.test(member.color));
+    assert.equal(member.canApproveReports, member.role === 'executive');
+    assert.notEqual(member.role, 'admin');
+    assert.ok(member.workstreamIds.every(id => state.workstreams.some(stream => stream.id === id)));
+    if (member.role === 'contributor') assert.ok(member.workstreamIds.length < state.workstreams.length, 'Specialists are assigned to the use cases they support.');
+    if (member.role === 'lead') assert.deepEqual(new Set(member.workstreamIds), new Set(state.workstreams.filter(stream => stream.leadId === member.id).map(stream => stream.id)));
+  }
+  assert.equal(new Set(state.workstreams.map(stream => stream.leadId)).size, 3);
+  assert.ok(new Set(state.items.filter(item => item.stage !== 'Closed').map(item => item.currentOwnerId)).size >= 7);
+  for (const stream of state.workstreams) {
+    const lead = memberById.get(stream.leadId)!;
+    assert.equal(lead.role, 'lead');
+    assert.doesNotThrow(() => authorize(state, lead, 'workstreams', stream));
+    for (const outsider of state.members.filter(member => member.role === 'lead' && member.id !== lead.id)) assert.throws(() => authorize(state, outsider, 'workstreams', stream));
+  }
+  for (const item of state.items) for (const id of [item.ownerId, item.currentOwnerId]) assert.ok(memberById.get(id)?.workstreamIds.includes(item.workstreamId), `${item.id} has an owner outside the supporting team.`);
+  for (const submission of state.submissions) assert.equal(submission.confirmedBy, state.workstreams.find(stream => stream.id === submission.workstreamId)!.leadId);
+  for (const event of state.events) {
+    assert.ok(memberById.has(event.actorId));
+    if (event.entityType !== 'items') continue;
+    for (const snapshot of [event.before, event.after] as any[]) if (snapshot) for (const field of ['ownerId', 'currentOwnerId']) if (snapshot[field]) assert.ok(memberById.get(snapshot[field])?.workstreamIds.includes(snapshot.workstreamId), `Historical ownership in ${event.id} must match the same team scopes.`);
+  }
+  for (const check of state.tests) {
+    const item = state.items.find(record => record.id === check.itemId)!;
+    assert.ok(memberById.get(check.authorId)?.workstreamIds.includes(item.workstreamId));
+    if (item.kind === 'general') assert.equal(check.authorId, state.workstreams.find(stream => stream.id === item.workstreamId)!.leadId);
+  }
+  const prose = [state.members, state.workstreams, state.items, state.meetings, state.registers, state.reports, state.sourceRecords, state.events];
+  assert.doesNotMatch(JSON.stringify(prose), /\bDemo (?:PMO|lead|engineer|QA|approver)\b/);
+  assert.equal(state.items.find(item => item.id === 'showcase-budget-discovery')!.currentOwnerId, 'demo-analyst');
+  assert.equal(state.items.find(item => item.id === 'showcase-mi-release')!.currentOwnerId, 'demo-engineer');
+});
+
 test('showcase discovery and release heroes can complete real guarded workflow actions', async () => fixture(async (api, state) => {
   const item = async (id: string) => (await state()).items.find(value => value.id === id)!;
   const move = async (id: string, stage: string, expected = 200, extra = {}) => api('POST', `/api/items/${id}/transition`, { version: (await item(id)).version, stage, ...extra }, expected);
@@ -139,7 +180,10 @@ test('showcase discovery and release heroes can complete real guarded workflow a
   assert.equal((await item(release)).stage, 'Development');
   await move(release, 'UAT', 200, { currentOwnerId: 'demo-qa' });
   await move(release, 'Ready for production', 400);
-  await pass(release);
+  await api('POST', '/api/demo/persona', { userId: 'demo-qa' });
+  const qaCheck = await pass(release);
+  assert.equal(qaCheck.authorId, 'demo-qa');
+  await api('POST', '/api/demo/persona', { userId: 'demo-pmo' });
   await move(release, 'Ready for production', 200, { currentOwnerId: 'demo-engineer' });
   await move(release, 'Production verification', 400);
   await move(release, 'Production verification', 200, { currentOwnerId: 'demo-qa', evidence: 'Synthetic release rehearsal — no real deployment.' });
@@ -165,9 +209,18 @@ test('showcase discovery and release heroes can complete real guarded workflow a
 test('showcase meeting capture, confirmations and approved presentation remain functional and labelled', async () => fixture(async (api, state) => {
   const initial = await state();
   const meeting = initial.meetings[0];
-  const captured = await api('POST', `/api/meetings/${meeting.id}/capture`, { version: meeting.version, workstreamId: 'uc-budget-companion', proposal: { type: 'action', title: 'Confirm the rehearsal workshop participants', detail: 'Illustrative meeting follow-up for the end-to-end test.', ownerId: 'demo-lead', dueDate: '2026-09-10' } });
+  const captured = await api('POST', `/api/meetings/${meeting.id}/capture`, { version: meeting.version, workstreamId: 'uc-budget-companion', proposal: { type: 'action', title: 'Confirm the rehearsal workshop participants', detail: 'Illustrative meeting follow-up for the end-to-end test.', ownerId: 'demo-strategy-lead', dueDate: '2026-09-10' } });
   assert.ok(captured.meeting.linkedItemIds.includes(captured.record.id));
-  for (const stream of (await state()).workstreams) await api('POST', '/api/submissions', { workstreamId: stream.id, completed: 'Illustrative delivery progress reviewed.', next: 'Complete the next demonstration gate.', changes: '', blockers: '', health: stream.health });
+  for (const lead of initial.members.filter(member => member.role === 'lead')) {
+    await api('POST', '/api/demo/persona', { userId: lead.id });
+    for (const stream of initial.workstreams.filter(stream => stream.leadId === lead.id)) {
+      const submission = await api('POST', '/api/submissions', { workstreamId: stream.id, completed: 'Illustrative delivery progress reviewed.', next: 'Complete the next demonstration gate.', changes: '', blockers: '', health: stream.health });
+      assert.equal(submission.confirmedBy, lead.id);
+    }
+    const otherStream = initial.workstreams.find(stream => stream.leadId !== lead.id)!;
+    await api('POST', '/api/submissions', { workstreamId: otherStream.id, completed: 'An unrelated lead must not confirm this update.', next: '', changes: '', blockers: '', health: otherStream.health }, 403);
+  }
+  await api('POST', '/api/demo/persona', { userId: 'demo-pmo' });
   const draft = await api('POST', '/api/reports', { audience: 'client' });
   assert.ok(draft.body.workstreams.every((w: any) => w.confirmed));
   await api('POST', `/api/reports/${draft.id}/approve`, { version: draft.version }, 403);

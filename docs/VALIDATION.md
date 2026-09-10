@@ -4,6 +4,8 @@ This index separates current automated coverage from dated historical browser ev
 
 ## Current coverage
 
+The fictional-team revision passed **97 of 97 tests** and a production build on 10 September. Coverage checks ten named sample teammates, role-appropriate assignments, lead scope, attributed confirmations and checks, and continued exclusion of internal staffing notes from client reports. Preview switching drains pending refreshes, blocks overlapping switches and saves, and verifies the selected identity before restoring editing.
+
 The manager-review revision passed **96 of 96 tests** and a production build on 10 September. Added coverage verifies complete illustrative profiles and connected records, three months of contemporaneous report history, ten current confirmations, and contextual evidence resolution for artifacts, work references and failed checks. Unknown references and non-demo workspaces cannot manufacture a specimen. Final copy polish retained explicit assertions that internal staffing details stay out of every client report.
 
 The navigation and escalation revision passed **92 of 92 tests** and a production build on 9 September. New tests cover legacy-route compatibility, Work/report URL parsing, escalation permissions, concurrent/stale writes, duplicate prevention, legacy status history, resolution and re-escalation, source freshness, and preservation of work stages. Windows launcher checks covered detached startup, a 50-second soft timeout with reuse of the same slow-starting process, concurrent launch rejection, wrong-store refusal and environment preservation.
@@ -21,6 +23,8 @@ The [8 September repository audit](REPOSITORY-REVIEW-2026-09-08.md) records corr
 Dependency maintenance was followed by a successful build, zero known production-dependency advisories from `pnpm audit --prod --json`, an XLSX conditional-formatting round-trip, and static asset/deep-link/API-fallback checks. The audit document records the exact resolved versions and compatibility evidence.
 
 ## Current browser observations
+
+The fictional-team revision was exercised through the browser in a separate rehearsal store: a new Budget discovery action saved with Nadia Saleh accountable and Rami Khalil acting next; a UAT check saved under Priya Nair; and a new internal report saved edited wording. The persisted server records were checked, and changed sources correctly invalidated the affected confirmations. An overlapping preview-profile switch discovered during rehearsal was fixed and the named check then passed. The manager-review store was confirmed unchanged before installing its clean fictional-team fixture; rehearsal records were not included.
 
 On 10 September, the manager review was checked at a 1440×900 laptop viewport with no horizontal document overflow. The four-stop guide opened populated discovery work, an enabled QA handoff form, blocked reconciliation work and its linked escalation, and the named month-three approved report. Current reporting showed ten of ten use cases confirmed. The report presentation and a record-specific discovery evidence specimen opened in separate tabs. Meeting notes and their linked follow-ups were populated. These browser checks left work and report records unchanged; the state-changing paths are covered by the integration suite. Private source context was prepared only in the ignored local review store, and the actual project state was verified unchanged.
 
