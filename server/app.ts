@@ -10,7 +10,7 @@ import { seedConfiguration, type SeedProfile } from './seed-config.js';
 import { HttpError, audit, authorize, checkVersion, collection, createRecord, day, delivery, getRecord, id, latestStreamChange, patchRecord, period, pmo, reportDraft, requireThat, schemas, sourceVersions, streamConfirmed, textField, touch, transition, validateReferences } from './domain.js';
 import { aiAvailable, draftReport, extractNotes } from './ai.js';
 import { exportCsv, exportWorkbook, importFingerprint, previewImport } from './imports.js';
-import type { HubState, ImportPreview, Member, Report, Submission } from '../shared/types.js';
+import type { HubState, ImportPreview, Member } from '../shared/types.js';
 
 export type AppOptions = { dataDir?: string; seedProfile?: SeedProfile; state?: HubState; testMode?: boolean; now?: () => Date; databaseUrl?: string; logger?: boolean };
 export async function createApp(options: AppOptions = {}) {
@@ -256,7 +256,7 @@ export async function createApp(options: AppOptions = {}) {
   app.post('/api/import/preview', async request => {
     const state = await store.read(), user = current(request, state); pmo(user);
     const body = z.object({ filename: z.string().max(200), content: z.string(), mapping: z.record(z.string(), z.string()).optional() }).parse(request.body);
-    const preview = await previewImport(state, body.filename, body.content, body.mapping, now());
+    const preview = await previewImport(state, body.filename, body.content, body.mapping);
     for (const [key, value] of previews) if (value.expires < Date.now()) previews.delete(key);
     requireThat(previews.size < 50, 'Too many pending imports. Wait for an older preview to expire.', 429);
     previews.set(preview.id, { preview, userId: user.id, expires: Date.now() + 30 * 60000 });

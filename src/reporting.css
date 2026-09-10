@@ -70,12 +70,12 @@
 .report-archive-filters label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; }
 .report-archive-filters select { min-width: 135px; }
 .report-edition-list { display: flex; gap: 0; padding: 0 24px 24px; overflow: auto; scroll-padding: 24px; }
-.report-edition { display: grid; gap: 8px; min-width: 220px; text-align: left; padding: 16px 20px; border: 1px solid var(--border); border-top: 2px solid var(--border); background: var(--surface); }
+.report-edition { display: grid; gap: 8px; flex: 0 0 280px; min-width: 220px; text-align: left; padding: 16px 20px; border: 1px solid var(--border); border-top: 2px solid var(--border); background: var(--surface); }
 .report-edition + .report-edition { margin-left: -1px; }
 .report-edition.active { position: relative; border-top-color: var(--primary); background: #f3eafa; }
 .report-edition:hover { background: #f8f4fb; }
 .report-edition:focus-visible { position: relative; z-index: 1; outline-offset: -3px; }
-.report-edition strong { font-size: 16px; }
+.report-edition strong { font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
 .report-edition > span { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
 .delivery-report.report-page { color: var(--ink); padding: 36px; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
 .delivery-report .report-cover { border-bottom: 1px solid var(--ink); margin-bottom: 28px; padding-bottom: 28px; }

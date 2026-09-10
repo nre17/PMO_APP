@@ -6,11 +6,11 @@ The portfolio and the fictional demonstration use separate profiles. Both use lo
 
 The default `SEED_PROFILE=portfolio` opens `.data/portfolio`. It contains the ten confirmed use-case names, generic local preview roles, and no work items, deliverables, milestones, confirmations, or reports. Leads and lifecycle positions begin unassigned. Existing local data is preserved on restart.
 
-1. Open Use cases and select a confirmed name. Record an agreed purpose, scope, lifecycle phase, priority, and next gate when those facts are known. Assign a lead explicitly; a preview persona is only a local role for exercising the UI.
-2. Add a deliverable definition to that use case. Set its lifecycle phase and review status independently from technical work-item stages. Accepted deliverables require evidence.
+1. Open Portfolio and select a confirmed name. Record an agreed purpose, scope, lifecycle phase, priority, and next gate when those facts are known. Assign a lead explicitly; a preview persona is only a local role for exercising the UI.
+2. Add an artifact definition to that use case. Set its lifecycle phase and review status independently from technical work-item stages. Record the reviewed artifact or acceptance reference when available. Artifact status is a recorded assessment; it does not enforce a separate approval or evidence gate.
 3. Capture a work item, then agree ownership, a target, next action, and acceptance criteria before starting delivery. Link it to the deliverable.
 4. Add a milestone with a baseline and current forecast. Link contributing use cases and deliverables explicitly. An association does not claim a critical path.
-5. Review progress from Overview and Project meetings. Save discovery, working-session, or delivery-review notes and add a reviewed follow-up with an owner and date. Later edits retain version conflicts and linked records.
+5. Review progress from Work → Needs attention and Project meetings. Save discovery, working-session, or delivery-review notes and add a reviewed follow-up with an owner and date. Later edits retain version conflicts and linked records.
 6. Review and confirm each use case's reporting position, prepare a draft for its audience, and use the appropriate preview role to exercise approval. An approved brief is a fixed edition; corrections preserve the original.
 
 Leave unknown fields unassigned. A useful empty state is the correct result until work is recorded.

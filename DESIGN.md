@@ -5,19 +5,19 @@ The portfolio comes first. A manager should immediately find the ten use cases, 
 ## Information architecture
 
 ```
-Programme                 Use case portfolio
-  Use case portfolio        Compact masthead / actual record counts
-  Delivery overview         Shaping → Discovery → Design → Build → Assurance → Release → Adoption
-  My work                   Search / phase / ordering / cards or list
-  Delivery                  Named use cases             Selected use case
-Records                     Phase / lead / work          Brief | Artifacts | Work & records
-  Risks & decisions                                      Outcome, scope, gate, owner
-  Milestones                                             Linked delivery, milestones, RAID
-  Meetings
-Reporting
-  Weekly report
-  Approved briefs
+Primary destinations       Views and connected records
+  Portfolio                  Named use cases; lifecycle and group filters
+                             Selected brief, artifacts, work and milestones
+  Work                       All work | Needs attention | My work
+                             Milestones | Artifacts
+  Risks & decisions          Concerns, escalation owners and decisions
+  Reports                    Current period | Previous editions
+  Project sources            Source rows, original statuses and provenance
+
+Shared actions              Search | Project meetings | Project settings
 ```
+
+Keep the five destinations stable. Work views share one destination; reporting history remains a view of Reports. Meetings open a working panel rather than adding another sidebar destination. Older links resolve to the corresponding current view.
 
 Use-case phases describe the consulting engagement; task stages describe execution. Lifecycle artifacts reuse deliverables and their task/milestone links. Phase and artifact statuses are recorded assessments; neither implies formal approval without its own supporting record.
 

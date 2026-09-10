@@ -34,7 +34,7 @@ function cellText(value: ExcelJS.CellValue): string {
   }
   return String(value);
 }
-export async function previewImport(state: HubState, filename: string, content: string, mapping: Record<string, string> | undefined, now: string): Promise<ImportPreview> {
+export async function previewImport(state: HubState, filename: string, content: string, mapping: Record<string, string> | undefined): Promise<ImportPreview> {
   requireThat(/\.(xlsx|csv)$/i.test(filename), 'Use a CSV or XLSX file.');
   requireThat(/^[A-Za-z0-9+/=\r\n]+$/.test(content), 'Invalid file encoding.');
   const buffer = Buffer.from(content, 'base64');

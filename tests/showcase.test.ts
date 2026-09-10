@@ -9,6 +9,7 @@ import { createPortfolioState } from '../server/portfolio-seed.js';
 import { seedConfiguration } from '../server/seed-config.js';
 import { schemas, validateReferences } from '../server/domain.js';
 import { LIFECYCLE_PHASES, type HubState } from '../shared/types.js';
+import { confirmationState, reportingPeriod } from '../shared/reporting.js';
 
 const fixedNow = new Date('2026-09-08T08:00:00.000Z');
 type Api = (method: string, url: string, payload?: unknown, expected?: number) => Promise<any>;
@@ -44,21 +45,82 @@ test('showcase covers the consulting lifecycle with valid links and explicit ill
     assert.equal(new Set(state[collection].map(row => row.id)).size, state[collection].length);
     for (const row of state[collection]) { schemas[collection].parse(row); validateReferences(state, collection, row); }
   }
-  for (const item of state.items.filter(i => i.stage === 'Closed')) assert.ok(item.closedAt);
-  for (const artifact of state.deliverables.filter(d => d.status === 'accepted')) assert.ok(artifact.evidenceLinks?.length);
+  for (const stream of state.workstreams) {
+    for (const field of ['description', 'scope', 'leadId', 'lifecyclePhase', 'priority', 'nextGate', 'gateDate', 'statusNote', 'clientSummary'] as const) assert.ok(stream[field], `${stream.name}: missing ${field}`);
+    assert.ok(stream.groups?.length && stream.sources?.length);
+    assert.ok(state.milestones.some(milestone => milestone.workstreamIds.includes(stream.id) && milestone.title === stream.nextGate && milestone.forecastDate === stream.gateDate));
+  }
+  for (const item of state.items) {
+    for (const field of ['description', 'ownerId', 'currentOwnerId', 'baselineDate', 'dueDate', 'acceptanceCriteria', 'nextAction', 'deliverableId'] as const) assert.ok(item[field], `${item.id}: missing ${field}`);
+    assert.notEqual(item.priority, 'Not set');
+    assert.ok(item.evidenceLinks.length);
+    assert.ok(item.createdAt <= item.updatedAt);
+    if (item.stage === 'Closed') assert.ok(item.closedAt && item.closedAt <= fixedNow.toISOString());
+  }
+  for (const artifact of state.deliverables) { assert.ok(artifact.evidenceLinks?.length); assert.ok(artifact.description.length > 80); assert.ok(state.items.some(item => item.deliverableId === artifact.id)); }
   for (const result of state.tests) {
     assert.ok(state.items.some(item => item.id === result.itemId));
     assert.ok(state.members.some(member => member.id === result.authorId));
     assert.match(result.evidence, /synthetic|illustrative|demo|example\.invalid/i);
   }
   assert.ok(state.registers.some(r => r.type === 'dependency' && r.relatedItemIds.includes('showcase-ppi-blocker') && r.milestoneIds.length));
-  assert.ok(state.sourceRecords?.some(r => r.disposition === 'needs_review' && r.itemId));
+  assert.ok(state.sourceRecords?.every(row => row.disposition !== 'needs_review' && !row.syncNote && row.sourceOwner && row.sourcePriority && row.sourceDates && row.resolutionNotes));
+  const reconciled = state.sourceRecords?.find(row => row.sourceKey === 'DEMO-2')!;
+  assert.equal(reconciled.sourceStatus, 'Done');
+  assert.equal(reconciled.disposition, 'completed');
+  assert.equal(state.items.find(item => item.id === reconciled.itemId)?.stage, 'Closed');
+  assert.ok(state.events.some(event => event.entityId === reconciled.id && event.action === 'source-reconciled'));
   const reviewed = state.reports.find(report => report.id === 'showcase-report-reviewed')!;
   assert.equal(reviewed.status, 'approved');
   assert.ok(reviewed.body.highlights.length > 0 && reviewed.body.milestones.length > 0);
-  assert.equal(reviewed.body.workstreams.filter(stream => !stream.confirmed).length, 4);
-  assert.ok(reviewed.incompleteReason);
+  assert.equal(reviewed.body.workstreams.filter(stream => !stream.confirmed).length, 0);
+  assert.equal(reviewed.incompleteReason, undefined);
+  const period = reportingPeriod(fixedNow, state.settings.timezone, state.settings.cutoffHour);
+  assert.ok(state.workstreams.every(stream => confirmationState(state, stream.id, period.end).confirmed));
+  assert.ok(state.items.some(item => item.stage !== 'Closed' && item.currentOwnerId === 'demo-pmo'), 'The opening PMO persona has a meaningful assignment.');
+  assert.ok(state.reports.some(report => report.audience === 'internal' && report.periodEnd === period.end && report.body.summary));
+  const privateRisk = state.registers.find(record => record.id === 'showcase-raid-internal')!;
+  assert.equal(privateRisk.detail, 'The pilot support roster still needs a named backup for analyst training and first-line issue triage.');
+  assert.equal(privateRisk.clientVisible, false);
+  assert.ok(state.reports.find(report => report.id === 'showcase-report-internal')!.body.attention.some(line => line.includes(privateRisk.title)), 'Internal reporting retains the meaningful staffing concern.');
+  for (const report of state.reports.filter(report => report.audience === 'client')) for (const privateText of [privateRisk.title, privateRisk.detail, privateRisk.nextAction]) {
+    assert.ok(!JSON.stringify(report.body).includes(privateText), `${report.id} must omit the internal staffing concern.`);
+  }
+  for (const stream of reviewed.body.workstreams) assert.ok(stream.completed.length && stream.next.length && stream.attention.length);
+  const benchmark = state.workstreams.find(stream => stream.id === 'uc-benchmark')!;
+  assert.match(`${benchmark.description} ${benchmark.scope}`, /portfolio|peer|index/i);
+  assert.doesNotMatch(`${benchmark.description} ${benchmark.scope}`, /scoring rubric|reference.answer|model evaluation/i);
   assert.equal(createPortfolioState(fixedNow).settings.demoScenario, undefined);
+});
+
+test('manager review history spans three months and approved archives contain only contemporaneous facts', () => {
+  const state = createShowcaseState(fixedNow);
+  const first = state.reports.find(report => report.id === 'showcase-report-approved')!;
+  const second = state.reports.find(report => report.id === 'showcase-report-month-two')!;
+  const current = state.reports.find(report => report.id === 'showcase-report-reviewed')!;
+  assert.ok(first.asOf < second.asOf && second.asOf < current.asOf);
+  assert.ok(new Date(current.asOf).getTime() - Math.min(...state.items.map(item => new Date(item.createdAt).getTime())) >= 89 * 86_400_000);
+  for (const report of [first, second, current]) {
+    assert.equal(report.status, 'approved');
+    assert.equal(report.body.workstreams.length, 10);
+    assert.ok(report.body.workstreams.every(stream => stream.confirmed));
+    assert.equal(report.incompleteReason, undefined);
+    assert.ok(report.body.highlights.length > 0, `${report.id} should show real closures from its period`);
+    assert.match(report.body.summary, /illustrative|fictional/i);
+  }
+  assert.ok(first.body.highlights.some(line => line.includes('initial discovery stakeholders')));
+  assert.ok(second.body.highlights.some(line => line.includes('reviewer journey')));
+  for (const report of [first, second]) {
+    assert.ok(!report.body.attention.some(line => /sample.access decision|filter resets/i.test(line)));
+    for (const key of Object.keys(report.sourceVersions).filter(key => key.startsWith('items:'))) {
+      const events = state.events.filter(event => event.entityType === 'items' && event.entityId === key.slice(6) && event.createdAt <= report.asOf && event.after).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      assert.equal(report.sourceVersions[key], (events.at(-1)!.after as any).version);
+    }
+  }
+  const snapshot = structuredClone(current);
+  state.items[0].title = 'Edited after approval';
+  state.workstreams[0].statusNote = 'Updated after approval';
+  assert.deepEqual(current, snapshot);
 });
 
 test('showcase discovery and release heroes can complete real guarded workflow actions', async () => fixture(async (api, state) => {
@@ -114,6 +176,8 @@ test('showcase meeting capture, confirmations and approved presentation remain f
   const snapshot = await api('GET', `/api/reports/${draft.id}/presentation`);
   assert.equal(snapshot.demoScenario, 'consulting-lifecycle');
   assert.equal(snapshot.status, 'approved');
+  const privateRisk = initial.registers.find(record => record.id === 'showcase-raid-internal')!;
+  for (const privateText of [privateRisk.title, privateRisk.detail, privateRisk.nextAction]) assert.ok(!JSON.stringify(snapshot).includes(privateText), 'The approved client presentation must exclude internal staffing information.');
   await api('POST', '/api/demo/persona', { userId: 'demo-pmo' });
   const work = (await state()).items.find(i => i.id === 'showcase-budget-scope')!;
   await api('PATCH', `/api/records/items/${work.id}`, { version: work.version, changes: { title: 'Revised demonstration scope follow-up' } });

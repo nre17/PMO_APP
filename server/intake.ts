@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { LIFECYCLE_PHASES, type HubState, type SourceDocument, type SourceRecord, type WorkItem } from '../shared/types.js';
+import { LIFECYCLE_PHASES, type HubState, type SourceRecord, type WorkItem } from '../shared/types.js';
 import { audit, day, itemSchema, pmo, requireThat, touch } from './domain.js';
 
 const text = z.string().trim().max(12000);

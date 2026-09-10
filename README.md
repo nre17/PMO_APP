@@ -2,7 +2,7 @@
 
 A desktop workspace connecting an AI consulting engagement's use-case portfolio to discovery, delivery, assurance and adoption. The portfolio is the starting point; work, risks, decisions, milestones and weekly reporting stay connected to it.
 
-The workspace starts with ten confirmed names: Performance Portfolio Intelligence, Investment Companion, Legal Companion, Market Intelligence, Accounting Validation, Benchmark, AI Based Treasury Liquidity Management, Spreadsheet Intelligence, Public Finance and Budget Companion. Leads, priorities, phases, scope, dates and outcomes are **not yet set**. No project commitments or reports are invented.
+The default portfolio profile starts with ten confirmed names: Performance Portfolio Intelligence, Investment Companion, Legal Companion, Market Intelligence, Accounting Validation, Benchmark, AI Based Treasury Liquidity Management, Spreadsheet Intelligence, Public Finance and Budget Companion. Leads, priorities, phases, scope, dates and outcomes are **not yet set**. No project commitments or reports are invented. The separate showcase profile below provides an explicitly fictional, populated rehearsal.
 
 **Deployment target: Replit**, confirmed on 8 September 2026. The existing React interface, Node API and PostgreSQL store form the hosted application. The [Replit deployment plan](docs/DEPLOYMENT.md#replit-deployment-target) records the remaining hosting integration; the current release still runs as a local preview. [replit.md](replit.md) provides the project handoff for work in Replit.
 
@@ -50,7 +50,7 @@ Stop a server with Ctrl+C. Build before serving compiled assets; restart a compi
 | `SEED_PROFILE=portfolio` | Default. Seeds ten names into a new `.data/portfolio` store. |
 | `SEED_PROFILE=demo` | Opens the original `.data/pmo` synthetic Northstar scenario. |
 | `SEED_PROFILE=project` | Opens the isolated `.data/client` project store. Reviewed local intake supplies its records. |
-| `SEED_PROFILE=showcase` | Opens `.data/showcase`, a populated illustrative consulting-lifecycle demonstration. |
+| `SEED_PROFILE=showcase` | Opens `.data/showcase`, a populated scenario illustrating month three of programme use. |
 | `DATA_DIR` | Optional local storage path; overrides the profile's default path. |
 | `DATABASE_URL` | Optional PostgreSQL connection; the profile only seeds an empty database. |
 | `APP_MODE=demo` | Required local preview mode; non-demo startup is blocked. |
@@ -63,11 +63,15 @@ PGlite supplies local PostgreSQL storage. Restarts preserve edits and dates. Own
 
 `pnpm demo:reset` archives the selected local store to a timestamped sibling backup. Stop its server and check `SEED_PROFILE` and `DATA_DIR` first. It refuses external PostgreSQL and paths outside the workspace. See [the walkthrough](docs/DEMO.md) for synthetic workflow examples.
 
-## Present the full demonstration
+## Present the five-minute manager review
 
 Double-click **Open Demo.cmd**, or run `pnpm showcase` and open `http://127.0.0.1:4311`, for the populated, explicitly labelled demonstration. It can run alongside the sourced project on port 4310. The launcher selects `.data/showcase` and overrides any external database setting for that process. `pnpm showcase --production` serves compiled assets after `pnpm build`.
 
-The ten use cases include illustrative discovery, architecture, engineering, evaluation, UAT, release and adoption work; connected milestones and RAID records; meetings; confirmations; and report editions. The **Demo guide** walks through the real controls. Synthetic roles, tests and approvals demonstrate behaviour without representing project commitments. Approved presentation views retain the demonstration label. Ordinary restart preserves the rehearsal; the [showcase walkthrough](docs/SHOWCASE.md) includes a safe reset and a suggested presentation sequence.
+Start as **Demo PMO** and open **5-minute tour** in the **Manager review · Illustrative data** banner. Four stops cover the portfolio, one piece of work, an escalation and reporting. The ten use cases show a mature, fictional month-three programme with discovery, engineering, assurance and adoption work, connected artifacts, milestones, decisions and meetings. One optional handoff demonstrates the workflow; there is no need to complete a release or switch approvers during the screen-share.
+
+Open **Reports → Previous editions → Month three · Programme review** for the prepared approved presentation. A fresh showcase has **10/10 fresh use-case confirmations** and five reports: approved month-one, month-two and month-three editions, plus current client and internal drafts. The approved editions stay fixed as practice edits change the live workspace. This history illustrates future use and does not represent actual project progress or approvals.
+
+Prepared evidence links open contextual **`/evidence/:id`** specimens with recorded review details, connected work and a **Print specimen** action. Evidence and approved presentation views retain their illustrative labels. Ordinary restart preserves the rehearsal; the [showcase walkthrough](docs/SHOWCASE.md) includes the four-stop sequence, optional deeper rehearsals and a safe reset for a fresh fixture.
 
 ## Reviewed project intake
 

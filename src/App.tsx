@@ -14,6 +14,7 @@ import Portfolio from './Portfolio';
 import Sources from './Sources';
 import { WorkstreamEditor } from './OverviewExtras';
 import ShowcaseGuide from './ShowcaseGuide';
+import DemoEvidence from './DemoEvidence';
 
 const navigation = [
   {id:'sources',label:'Project sources',short:'Sources',icon:FileText},
@@ -23,7 +24,7 @@ const navigation = [
   {id:'reports',label:'Reports',short:'Reports',icon:FileText},
 ];
 const currentRoute = () => resolveWorkspaceRoute(location.hash);
-export default function App() { return location.pathname.startsWith('/brief/') ? <BriefRoute/> : <Workspace/>; }
+export default function App() { return location.pathname.startsWith('/brief/') ? <BriefRoute/> : location.pathname.startsWith('/evidence/') ? <DemoEvidence/> : <Workspace/>; }
 
 function useShowcaseEvidence(illustrative: boolean) {
   useEffect(() => {
@@ -41,7 +42,7 @@ function useShowcaseEvidence(illustrative: boolean) {
         const evidenceId = decodeURIComponent(source.pathname.slice(prefix.length));
         if (!evidenceId) return;
         event.preventDefault();
-        window.open(`/demo-evidence.html#${encodeURIComponent(evidenceId)}`, '_blank', 'noopener,noreferrer');
+        window.open(`/evidence/${encodeURIComponent(evidenceId)}`, '_blank', 'noopener,noreferrer');
       } catch { /* Malformed references retain their normal link behavior. */ }
     };
     document.addEventListener('click', openEvidence);

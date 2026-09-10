@@ -4,6 +4,8 @@ This index separates current automated coverage from dated historical browser ev
 
 ## Current coverage
 
+The manager-review revision passed **96 of 96 tests** and a production build on 10 September. Added coverage verifies complete illustrative profiles and connected records, three months of contemporaneous report history, ten current confirmations, and contextual evidence resolution for artifacts, work references and failed checks. Unknown references and non-demo workspaces cannot manufacture a specimen. Final copy polish retained explicit assertions that internal staffing details stay out of every client report.
+
 The navigation and escalation revision passed **92 of 92 tests** and a production build on 9 September. New tests cover legacy-route compatibility, Work/report URL parsing, escalation permissions, concurrent/stale writes, duplicate prevention, legacy status history, resolution and re-escalation, source freshness, and preservation of work stages. Windows launcher checks covered detached startup, a 50-second soft timeout with reuse of the same slow-starting process, concurrent launch rejection, wrong-store refusal and environment preservation.
 
 The active suite includes backend storage and permission invariants; exact reporting cutoffs and source freshness; delivery/overview filters and handover prerequisites; portfolio lifecycle, profile separation, artifact associations and permission boundaries. Client-report tests check internal-content exclusion and immutable approved snapshots. Import tests use real CSV/XLSX content and preserve stages without manufacturing completion evidence.
@@ -19,6 +21,8 @@ The [8 September repository audit](REPOSITORY-REVIEW-2026-09-08.md) records corr
 Dependency maintenance was followed by a successful build, zero known production-dependency advisories from `pnpm audit --prod --json`, an XLSX conditional-formatting round-trip, and static asset/deep-link/API-fallback checks. The audit document records the exact resolved versions and compatibility evidence.
 
 ## Current browser observations
+
+On 10 September, the manager review was checked at a 1440×900 laptop viewport with no horizontal document overflow. The four-stop guide opened populated discovery work, an enabled QA handoff form, blocked reconciliation work and its linked escalation, and the named month-three approved report. Current reporting showed ten of ten use cases confirmed. The report presentation and a record-specific discovery evidence specimen opened in separate tabs. Meeting notes and their linked follow-ups were populated. These browser checks left work and report records unchanged; the state-changing paths are covered by the integration suite. Private source context was prepared only in the ignored local review store, and the actual project state was verified unchanged.
 
 On 9 September, the in-app browser verified the five primary destinations and all five Work views at laptop dimensions. A synthetic escalation was raised from a work item, opened as a linked register, and resolved with a response; the work remained in Development. A saved approved report opened directly before a showcase browser session existed. Report history gained its own URL and was checked after reload. Chrome was not connected to browser automation, so these observations do not claim a Chrome-specific run. Both local compiled servers were restarted after the final build and served its JavaScript assets successfully.
 

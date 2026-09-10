@@ -6,7 +6,9 @@ The launcher starts the server in the background when needed, waits until it res
 
 A slow first start may show **still starting** after 50 seconds. The server keeps starting in the background. Double-click the same launcher again to wait for that recorded process; this does not start a competing server. The browser opens once the workspace is ready.
 
-An **illustrative evidence** page is a separate sample attachment. Its return link opens the workspace. When moving between browsers, use the full workspace URL above; copying an evidence-page URL opens that same attachment.
+For a manager screen-share, open the demo as **Demo PMO** and choose **5-minute tour** in its **Manager review · Illustrative data** banner. Four stops cover the portfolio, one piece of work, an escalation and the prepared **Month three · Programme review** in **Reports → Previous editions**. This fictional month-three programme starts with **10/10 fresh use-case confirmations** and five reports, including three approved historical/current editions. You can present the prepared edition without running approval steps. Follow the [five-minute walkthrough](SHOWCASE.md) for the exact sequence and optional deeper rehearsals.
+
+Prepared evidence references open contextual **`/evidence/:id`** specimens in the showcase. They contain illustrative review details and connected work, with **Back to workspace** and **Print specimen** actions. Opening a specimen does not change the work or record approval. When moving between browsers, use the full workspace URL above to present the hub; an evidence-page URL opens that specimen.
 
 The launchers use Node.js 24 or later, PowerShell 7.5 or later, and the existing installed project dependencies. They find installed or Codex bundled runtimes without changing PowerShell execution policy. If the compiled app is absent, the launcher runs the existing build script once. After changing application code, rebuild with `scripts/start.ps1 -Task build` and restart the relevant server: the running server registered its asset paths at startup.
 
