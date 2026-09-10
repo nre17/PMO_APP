@@ -4,6 +4,8 @@ This index separates current automated coverage from dated historical browser ev
 
 ## Current coverage
 
+The Work scope revision passed the **15 existing overview and showcase tests** and a production build on 10 September. It changes interface defaults and guidance; existing data, stored stages, API defaults and workflow gates remain intact.
+
 The fictional-team revision passed **97 of 97 tests** and a production build on 10 September. Coverage checks ten named sample teammates, role-appropriate assignments, lead scope, attributed confirmations and checks, and continued exclusion of internal staffing notes from client reports. Preview switching drains pending refreshes, blocks overlapping switches and saves, and verifies the selected identity before restoring editing.
 
 The manager-review revision passed **96 of 96 tests** and a production build on 10 September. Added coverage verifies complete illustrative profiles and connected records, three months of contemporaneous report history, ten current confirmations, and contextual evidence resolution for artifacts, work references and failed checks. Unknown references and non-demo workspaces cannot manufacture a specimen. Final copy polish retained explicit assertions that internal staffing details stay out of every client report.
@@ -23,6 +25,8 @@ The [8 September repository audit](REPOSITORY-REVIEW-2026-09-08.md) records corr
 Dependency maintenance was followed by a successful build, zero known production-dependency advisories from `pnpm audit --prod --json`, an XLSX conditional-formatting round-trip, and static asset/deep-link/API-fallback checks. The audit document records the exact resolved versions and compatibility evidence.
 
 ## Current browser observations
+
+The Work scope revision was checked in the compiled manager review: new capture selected General work / Action; choosing Software change showed its UAT and release guidance; entering Board from All selected General work and showed discovery, scope and adoption examples. The 1440px document had no horizontal overflow. A fresh background tab loaded the workspace after correcting visibility-gated initial bootstrap. These checks saved no records, and both project and manager-review states matched their pre-change snapshots.
 
 The fictional-team revision was exercised through the browser in a separate rehearsal store: a new Budget discovery action saved with Nadia Saleh accountable and Rami Khalil acting next; a UAT check saved under Priya Nair; and a new internal report saved edited wording. The persisted server records were checked, and changed sources correctly invalidated the affected confirmations. An overlapping preview-profile switch discovered during rehearsal was fixed and the named check then passed. The manager-review store was confirmed unchanged before installing its clean fictional-team fixture; rehearsal records were not included.
 

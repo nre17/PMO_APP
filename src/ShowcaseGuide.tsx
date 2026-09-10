@@ -29,7 +29,7 @@ function guideSteps(state: HubState): GuideStep[] {
       'Reopen this stop and choose Record a UAT check. On the Market Intelligence record, open Checks & evidence → Record check. Select Passed or Failed, enter what you checked and an illustrative evidence reference, then Save check.',
       'Use Open discovery example to inspect a consulting brief and its Review step. There is no need to complete a software release.'
     ],
-    outcome: 'Your action is saved in Backlog. Your test records its author, result and evidence against the current delivery cycle.',
+    outcome: 'Your action is saved and ready to assign. Your test records its author, result and evidence against the current delivery cycle.',
     action: { label: 'Add a work item', page: 'work', createWork: true },
     secondary: { label: 'Record a UAT check', page: 'work', itemId: 'showcase-mi-density' },
     reference: { label: 'Open discovery example', page: 'work', itemId: 'showcase-budget-discovery' }

@@ -15,7 +15,7 @@ type Props = PageProps & {
 export default function WorkWorkspace(props: Props) {
   const { state, view, onView } = props;
   return <div className="work-workspace">
-    <header className="work-heading"><div><h1>Work</h1><p>Find a commitment, move it forward, or get a decision when it is stuck.</p></div><span>{state.items.filter(item => item.stage !== 'Closed').length} active · {state.items.filter(item => item.stage === 'Closed').length} closed</span></header>
+    <header className="work-heading"><div><h1>Work</h1><p>Every project commitment, from discovery and scope to engineering, releases and adoption.</p></div><span>{state.items.filter(item => item.stage !== 'Closed').length} active · {state.items.filter(item => item.stage === 'Closed').length} closed</span></header>
     <nav className="work-views" aria-label="Work views">{WORK_VIEWS.map(option => <a key={option.id} href={'#work' + (option.id === 'all' ? '' : `?view=${option.id}`)} aria-current={view === option.id ? 'page' : undefined} onClick={event => { event.preventDefault(); onView(option.id); }}>{option.label}</a>)}</nav>
     {view === 'attention' ? <Dashboard {...props} onRegister={props.openRegister} startMeeting={props.startMeeting} />
       : view === 'mine' ? <div className="work-personal-view"><MyWork {...props}/></div>
